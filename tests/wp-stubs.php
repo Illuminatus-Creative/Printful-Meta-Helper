@@ -18,6 +18,12 @@ final class PMH_Fake_WP {
 	public static $can_callback   = null;
 	public static bool $nonce_ok      = true;
 	public static int $next_term_id   = 100;
+	/** Calls that hit the database or object cache on a real site. */
+	public static array $calls        = array();
+
+	public static function count( string $fn ): void {
+		self::$calls[ $fn ] = ( self::$calls[ $fn ] ?? 0 ) + 1;
+	}
 
 	public static function reset(): void {
 		self::$posts        = array();
@@ -31,6 +37,7 @@ final class PMH_Fake_WP {
 		self::$can_callback = null;
 		self::$nonce_ok     = true;
 		self::$next_term_id = 100;
+		self::$calls        = array();
 	}
 
 	public static function add_term( string $taxonomy, string $name, ?int $id = null, ?string $slug = null ): WP_Term {
@@ -99,7 +106,7 @@ function apply_filters( $hook, $value ) { return $value; }
 function sanitize_text_field( $s ) { return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( (string) $s ) ) ); }
 function sanitize_key( $s ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $s ) ); }
 function sanitize_html_class( $s ) { return preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $s ); }
-function sanitize_title( $s ) { return strtolower( trim( preg_replace( '/[^a-z0-9]+/i', '-', (string) $s ), '-' ) ); }
+function sanitize_title( $s ) { return strtolower( trim( preg_replace( '/[^a-z0-9_]+/i', '-', (string) $s ), '-' ) ); }
 function absint( $v ) { return abs( (int) $v ); }
 function wp_unslash( $v ) { return $v; }
 function wp_parse_args( $args, $defaults = array() ) { return array_merge( $defaults, (array) $args ); }
@@ -120,10 +127,10 @@ function get_transient( $k ) { return PMH_Fake_WP::$transients[ $k ] ?? false; }
 function delete_transient( $k ) { unset( PMH_Fake_WP::$transients[ $k ] ); return true; }
 
 /* ---- posts ---- */
-function get_post_type( $id ) { return PMH_Fake_WP::$posts[ (int) $id ]['post_type'] ?? false; }
+function get_post_type( $id ) { PMH_Fake_WP::count( 'get_post_type' ); return PMH_Fake_WP::$posts[ (int) $id ]['post_type'] ?? false; }
 function wp_get_post_parent_id( $id ) { return (int) ( PMH_Fake_WP::$posts[ (int) $id ]['post_parent'] ?? 0 ); }
-function get_the_title( $id ) { return PMH_Fake_WP::$posts[ (int) $id ]['title'] ?? ''; }
-function get_post_meta( $id, $key = '', $single = false ) {
+function get_the_title( $id ) { PMH_Fake_WP::count( 'get_the_title' ); return PMH_Fake_WP::$posts[ (int) $id ]['title'] ?? ''; }
+function get_post_meta( $id, $key = '', $single = false ) { PMH_Fake_WP::count( 'get_post_meta' );
 	$v = PMH_Fake_WP::$post_meta[ (int) $id ][ $key ] ?? '';
 	return $single ? $v : ( '' === $v ? array() : array( $v ) );
 }
@@ -135,7 +142,7 @@ function wc_get_product_id_by_sku( $sku ) {
 	}
 	return 0;
 }
-function get_posts( $args ) {
+function get_posts( $args ) { PMH_Fake_WP::count( 'get_posts' );
 	$ids = array();
 	foreach ( PMH_Fake_WP::$posts as $id => $p ) {
 		if ( $p['post_type'] !== ( $args['post_type'] ?? 'post' ) ) {
@@ -162,7 +169,7 @@ function update_object_term_cache() {}
 
 /* ---- terms ---- */
 function taxonomy_exists( $t ) { return in_array( $t, array( 'pmh_blank', 'product_cat', 'pa_size' ), true ); }
-function get_terms( $args ) {
+function get_terms( $args ) { PMH_Fake_WP::count( 'get_terms' );
 	$out = array();
 	foreach ( PMH_Fake_WP::$terms as $term ) {
 		if ( $term->taxonomy !== ( $args['taxonomy'] ?? '' ) ) {
@@ -183,7 +190,7 @@ function get_term( $id, $tax = '' ) {
 	$t = PMH_Fake_WP::$terms[ (int) $id ] ?? null;
 	return $t && ( '' === $tax || $t->taxonomy === $tax ) ? $t : null;
 }
-function get_term_by( $field, $value, $tax ) {
+function get_term_by( $field, $value, $tax ) { PMH_Fake_WP::count( 'get_term_by' );
 	foreach ( PMH_Fake_WP::$terms as $t ) {
 		if ( $t->taxonomy !== $tax ) {
 			continue;
@@ -205,18 +212,18 @@ function wp_insert_term( $name, $tax ) {
 	$t = PMH_Fake_WP::add_term( $tax, $name );
 	return array( 'term_id' => $t->term_id, 'term_taxonomy_id' => $t->term_taxonomy_id );
 }
-function get_term_meta( $id, $key, $single = false ) { return PMH_Fake_WP::$term_meta[ (int) $id ][ $key ] ?? ''; }
-function update_term_meta( $id, $key, $value ) { PMH_Fake_WP::$term_meta[ (int) $id ][ $key ] = $value; return true; }
-function delete_term_meta( $id, $key ) { unset( PMH_Fake_WP::$term_meta[ (int) $id ][ $key ] ); return true; }
-function get_the_terms( $object_id, $tax ) {
+function get_term_meta( $id, $key, $single = false ) { PMH_Fake_WP::count( 'get_term_meta' ); return PMH_Fake_WP::$term_meta[ (int) $id ][ $key ] ?? ''; }
+function update_term_meta( $id, $key, $value ) { PMH_Fake_WP::count( 'update_term_meta' ); PMH_Fake_WP::$term_meta[ (int) $id ][ $key ] = $value; return true; }
+function delete_term_meta( $id, $key ) { PMH_Fake_WP::count( 'delete_term_meta' ); unset( PMH_Fake_WP::$term_meta[ (int) $id ][ $key ] ); return true; }
+function get_the_terms( $object_id, $tax ) { PMH_Fake_WP::count( 'get_the_terms' );
 	$ids = PMH_Fake_WP::$object_terms[ (int) $object_id ][ $tax ] ?? array();
 	return $ids ? array_values( array_filter( array_map( static fn( $id ) => PMH_Fake_WP::$terms[ $id ] ?? null, $ids ) ) ) : false;
 }
-function wp_get_post_terms( $object_id, $tax, $args = array() ) {
+function wp_get_post_terms( $object_id, $tax, $args = array() ) { PMH_Fake_WP::count( 'wp_get_post_terms' );
 	$terms = get_the_terms( $object_id, $tax ) ?: array();
 	return ( $args['fields'] ?? '' ) === 'ids' ? array_map( static fn( $t ) => $t->term_id, $terms ) : $terms;
 }
-function wp_set_object_terms( $object_id, $terms, $tax, $append = false ) {
+function wp_set_object_terms( $object_id, $terms, $tax, $append = false ) { PMH_Fake_WP::count( 'wp_set_object_terms' );
 	$ids = array_values( array_filter( array_map( 'intval', (array) $terms ) ) );
 	PMH_Fake_WP::$set_calls[] = array( (int) $object_id, $ids, $tax, (bool) $append );
 	$current = $append ? ( PMH_Fake_WP::$object_terms[ (int) $object_id ][ $tax ] ?? array() ) : array();

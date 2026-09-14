@@ -12,6 +12,7 @@ define( 'PMH_VERSION', 'test' );
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/wp-stubs.php';
+require_once __DIR__ . '/wc-stubs.php';
 
 spl_autoload_register(
 	static function ( string $class ): void {
