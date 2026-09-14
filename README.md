@@ -180,7 +180,8 @@ and drive it through clicks and input events.
 front-end render, the product-screen data and the Blank Groups scan against
 the fakes, reporting wall time and the calls that are a query or cache round
 trip on a real site. Cold-cache cost per product page is one meta prime and
-one term query regardless of variation count.
+one term query regardless of variation count; the Blank Groups scan primes
+product meta 200 products per query.
 
 ## Conventions
 

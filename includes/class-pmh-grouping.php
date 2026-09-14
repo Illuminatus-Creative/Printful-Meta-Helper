@@ -19,6 +19,9 @@ final class PMH_Grouping {
 	private const ACTION = 'pmh_apply_groups';
 	private const NONCE  = 'pmh_groups_nonce';
 
+	/** Products whose meta is primed per query during a scan. */
+	public const SCAN_CHUNK = 200;
+
 	public static function init(): void {
 		add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_apply' ) );
@@ -70,23 +73,19 @@ final class PMH_Grouping {
 
 		$parsed     = array();
 		$unreadable = array();
-		foreach ( $with_meta as $product_id ) {
-			$product_id = (int) $product_id;
-			$result     = PMH_Importer::from_product_meta( $product_id );
-			if ( ! $result || ! $result['product'] ) {
-				$unreadable[] = $product_id;
-				continue;
-			}
-			$blank = PMH_Blank::for_product( $product_id );
-			$cats  = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
+		foreach ( array_chunk( array_map( 'intval', $with_meta ), self::SCAN_CHUNK ) as $chunk ) {
+			// Meta is primed a chunk at a time: one query per chunk instead of
+			// one per product, without holding every product's meta at once.
+			update_meta_cache( 'post', $chunk );
 
-			$parsed[ $product_id ] = array(
-				'chart'      => $result['product'],
-				'body_chart' => $result['body'] ?: PMH_Size_Chart::empty_chart(),
-				'title'      => get_the_title( $product_id ),
-				'blank_id'   => $blank ? (int) $blank->term_id : 0,
-				'cats'       => is_wp_error( $cats ) ? array() : array_map( 'intval', $cats ),
-			);
+			foreach ( $chunk as $product_id ) {
+				$parsed_one = self::parse_product( $product_id );
+				if ( null === $parsed_one ) {
+					$unreadable[] = $product_id;
+					continue;
+				}
+				$parsed[ $product_id ] = $parsed_one;
+			}
 		}
 
 		$blank_charts = array();
@@ -98,6 +97,27 @@ final class PMH_Grouping {
 			'groups'     => self::group_products( $parsed, $blank_charts ),
 			'no_meta'    => max( 0, $total - count( $with_meta ) ),
 			'unreadable' => $unreadable,
+		);
+	}
+
+	/**
+	 * One product's contribution to the scan, or null when its chart meta
+	 * cannot be read.
+	 */
+	private static function parse_product( int $product_id ): ?array {
+		$result = PMH_Importer::from_product_meta( $product_id );
+		if ( ! $result || ! $result['product'] ) {
+			return null;
+		}
+		$blank = PMH_Blank::for_product( $product_id );
+		$cats  = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
+
+		return array(
+			'chart'      => $result['product'],
+			'body_chart' => $result['body'] ?: PMH_Size_Chart::empty_chart(),
+			'title'      => get_the_title( $product_id ),
+			'blank_id'   => $blank ? (int) $blank->term_id : 0,
+			'cats'       => is_wp_error( $cats ) ? array() : array_map( 'intval', $cats ),
 		);
 	}
 

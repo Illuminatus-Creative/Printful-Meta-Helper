@@ -149,4 +149,21 @@ final class GroupingTest extends TestCase {
 		self::assertSame( 1, $ok['skipped'], 'product 1 already assigned and left alone' );
 		self::assertSame( 1, $ok['assigned'] );
 	}
+
+	public function test_scan_primes_meta_in_chunks_not_per_product(): void {
+		$json = pmh_fixture( 'gildan-5000.json' );
+		$n    = PMH_Grouping::SCAN_CHUNK * 2 + 50;
+		for ( $i = 1; $i <= $n; $i++ ) {
+			PMH_Fake_WP::add_post( $i );
+			PMH_Fake_WP::$post_meta[ $i ][ PMH_Importer::PRODUCT_META_KEY ] = $json;
+		}
+		PMH_Fake_WP::$calls = array();
+
+		$scan = PMH_Grouping::scan();
+
+		self::assertSame( $n, count( reset( $scan['groups'] )['products'] ) );
+		self::assertSame( 3, PMH_Fake_WP::$calls['update_meta_cache'], 'ceil(450 / 200) primes' );
+		self::assertSame( $n, PMH_Fake_WP::$calls['get_post_meta_hit'] );
+		self::assertArrayNotHasKey( 'get_post_meta_miss', PMH_Fake_WP::$calls );
+	}
 }
