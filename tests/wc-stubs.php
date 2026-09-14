@@ -24,6 +24,14 @@ class WC_Product_Attribute {
 
 final class PMH_Fake_Attribute extends WC_Product_Attribute {}
 
+final class PMH_Fake_Variation extends WC_Product {
+	public function __construct( int $id, private int $parent ) {
+		parent::__construct( $id );
+	}
+	public function is_type( $type ): bool { return 'variation' === $type; }
+	public function get_parent_id(): int { return $this->parent; }
+}
+
 final class PMH_Fake_Variable extends WC_Product {
 	/** @param int[] $children */
 	public function __construct( int $id, private array $children, private array $attributes ) {
@@ -35,6 +43,18 @@ final class PMH_Fake_Variable extends WC_Product {
 		return $this->children;
 	}
 }
+
+/** Mirrors WC_Cache_Helper's per-group prefix that product saves bump. */
+final class PMH_Fake_Cache_Helper {
+	public static array $prefixes = array();
+	public static function get_cache_prefix( string $group ): string {
+		return 'wc_cache_' . ( self::$prefixes[ $group ] ?? '0' ) . '_';
+	}
+	public static function invalidate_cache_group( string $group ): void {
+		self::$prefixes[ $group ] = (string) ( ( (int) ( self::$prefixes[ $group ] ?? 0 ) ) + 1 );
+	}
+}
+class_alias( 'PMH_Fake_Cache_Helper', 'WC_Cache_Helper' );
 
 function wc_get_product( $id ) {
 	PMH_Fake_WP::count( 'wc_get_product' );

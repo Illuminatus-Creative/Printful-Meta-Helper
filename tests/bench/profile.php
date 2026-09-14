@@ -76,8 +76,16 @@ PMH_Fake_WP::$calls = array();
 printf( "variations=%d products=%d blanks=%d\n\n", $variations, $products, $blanks );
 
 /* ---------- front end: one product page ---------- */
-bench( 'PMH_Sizes::for_product', 50, static fn() => PMH_Sizes::for_product( $pid ) );
-bench( '[pmh_size_chart] full render', 50, static fn() => PMH_Shortcodes::size_chart( array() ) === '' ? null : null );
+bench(
+	'PMH_Sizes::for_product (cold object cache)',
+	50,
+	static function () use ( $pid ) {
+		PMH_Fake_WP::$object_cache = array();
+		PMH_Sizes::for_product( $pid );
+	}
+);
+bench( 'PMH_Sizes::for_product (warm object cache)', 50, static fn() => PMH_Sizes::for_product( $pid ) );
+bench( '[pmh_size_chart] full render (warm)', 50, static fn() => PMH_Shortcodes::size_chart( array() ) === '' ? null : null );
 bench( '[pmh_materials] full render', 50, static fn() => PMH_Shortcodes::materials( array() ) );
 
 /* ---------- admin: product edit screen ---------- */

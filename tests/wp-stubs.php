@@ -13,6 +13,8 @@ final class PMH_Fake_WP {
 	public static array $object_terms = array(); // object_id => [taxonomy => [term_id, ...]]
 	public static array $transients   = array();
 	public static array $primed_meta  = array(); // post ids whose meta is in the object cache
+	public static array $object_cache = array(); // group => key => value
+	public static array $options      = array();
 	public static array $set_calls    = array(); // wp_set_object_terms() log
 	public static bool $can           = true;
 	/** @var callable|null fn( string $cap, array $args ): bool — overrides $can when set. */
@@ -34,6 +36,9 @@ final class PMH_Fake_WP {
 		self::$object_terms = array();
 		self::$transients   = array();
 		self::$primed_meta  = array();
+		self::$object_cache = array();
+		self::$options      = array();
+		PMH_Fake_Cache_Helper::$prefixes = array();
 		self::$set_calls    = array();
 		self::$can          = true;
 		self::$can_callback = null;
@@ -122,6 +127,12 @@ function current_user_can( $cap, ...$args ) { return PMH_Fake_WP::$can_callback 
 function get_current_user_id() { return 1; }
 function wp_nonce_field( $a, $n ) { echo '<input type="hidden" name="' . $n . '" value="nonce">'; }
 function get_current_screen() { return null; }
+
+/* ---- object cache / options ---- */
+function wp_cache_get( $key, $group = '' ) { PMH_Fake_WP::count( 'wp_cache_get' ); return PMH_Fake_WP::$object_cache[ $group ][ $key ] ?? false; }
+function wp_cache_set( $key, $value, $group = '', $ttl = 0 ) { PMH_Fake_WP::count( 'wp_cache_set' ); PMH_Fake_WP::$object_cache[ $group ][ $key ] = $value; return true; }
+function wp_cache_delete( $key, $group = '' ) { unset( PMH_Fake_WP::$object_cache[ $group ][ $key ] ); return true; }
+function get_option( $name, $default = false ) { return PMH_Fake_WP::$options[ $name ] ?? $default; }
 
 /* ---- transients ---- */
 function set_transient( $k, $v, $ttl = 0 ) { PMH_Fake_WP::$transients[ $k ] = $v; return true; }

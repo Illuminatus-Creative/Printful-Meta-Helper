@@ -54,6 +54,7 @@ add_action(
 		PMH_Term_Meta::init();
 		PMH_Admin_Assets::init();
 		PMH_Grouping::init();
+		PMH_Sizes::init();
 		PMH_Renderer::init();
 		PMH_Shortcodes::init();
 	}

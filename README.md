@@ -180,8 +180,11 @@ and drive it through clicks and input events.
 front-end render, the product-screen data and the Blank Groups scan against
 the fakes, reporting wall time and the calls that are a query or cache round
 trip on a real site. Cold-cache cost per product page is one meta prime and
-one term query regardless of variation count; the Blank Groups scan primes
-product meta 200 products per query.
+one term query regardless of variation count; with a persistent object cache
+the computed size list is reused across requests under WooCommerce's
+per-product cache prefix, which product and variation saves bump, and is
+dropped on stock hooks and keyed on the hide-out-of-stock setting. The Blank
+Groups scan primes product meta 200 products per query.
 
 ## Conventions
 
