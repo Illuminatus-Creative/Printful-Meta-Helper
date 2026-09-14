@@ -1,0 +1,7 @@
+/* Blank term screens. The taxonomy is hierarchical only so quick/bulk edit
+   render a checklist; a parent blank has no meaning, so hide the field. */
+.taxonomy-pmh_blank .form-field.term-parent-wrap,
+.taxonomy-pmh_blank .form-field.term-parent-wrap + p.description,
+.taxonomy-pmh_blank tr.form-field.term-parent-wrap {
+	display: none;
+}
