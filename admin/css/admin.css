@@ -77,3 +77,68 @@
 .pmh-assign__hint {
 	color: #646970;
 }
+
+/* Size chart grid editor */
+.pmh-grid {
+	margin: 4px 0 8px;
+}
+.pmh-grid__note {
+	margin: 0 0 8px;
+}
+.pmh-grid__scroll {
+	overflow-x: auto;
+	max-width: 100%;
+}
+.pmh-grid__table {
+	border-collapse: collapse;
+	background: #fff;
+	border: 1px solid #dcdcde;
+}
+.pmh-grid__table th,
+.pmh-grid__table td {
+	padding: 4px;
+	border: 1px solid #dcdcde;
+	text-align: center;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+.pmh-grid__corner {
+	text-align: left;
+}
+.pmh-grid__size {
+	background: #f6f7f7;
+}
+.pmh-grid__size-input {
+	width: 4.5em;
+	text-align: center;
+	font-weight: 600;
+}
+.pmh-grid__label {
+	width: 11em;
+}
+.pmh-grid__value {
+	width: 5.5em;
+	text-align: center;
+}
+.pmh-grid__value--bad {
+	border-color: #b32d2e;
+	box-shadow: 0 0 0 1px #b32d2e;
+}
+.pmh-grid__remove {
+	min-height: 24px;
+	line-height: 22px;
+	padding: 0 6px;
+}
+.pmh-grid__remove-cell,
+.pmh-grid__add {
+	background: #f6f7f7;
+}
+.pmh-grid__table tfoot td {
+	text-align: left;
+}
+.pmh-grid__error {
+	color: #b32d2e;
+}
+.pmh-grid__json-toggle {
+	margin-bottom: 6px;
+}

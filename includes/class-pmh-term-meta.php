@@ -102,14 +102,14 @@ final class PMH_Term_Meta {
 			$mode,
 			'pmh_chart',
 			__( 'Garment chart (inches)', 'printful-meta-helper' ),
-			self::textarea( 'pmh_chart', self::chart_json( $data['chart'] ), 12, '', 'code' ),
-			__( 'Measurements of the garment laid flat. Rendered by [pmh_size_chart]. Edit as JSON: sizes, note, rows[].label, rows[].values{SIZE: [n] or [min, max]}. Inches only; centimetres are computed.', 'printful-meta-helper' )
+			self::textarea( 'pmh_chart', self::chart_json( $data['chart'] ), 12, '', 'code pmh-chart-json' ),
+			__( 'Measurements of the garment laid flat, rendered by [pmh_size_chart]. Columns are sizes, rows are measurements; a cell takes 28, 34-37 or 16 ½. Inches only; centimetres are computed. "Edit as JSON" shows the stored structure.', 'printful-meta-helper' )
 		);
 		self::field(
 			$mode,
 			'pmh_body_chart',
 			__( 'Body chart (inches)', 'printful-meta-helper' ),
-			self::textarea( 'pmh_body_chart', self::chart_json( $data['body_chart'] ), 8, '', 'code' ),
+			self::textarea( 'pmh_body_chart', self::chart_json( $data['body_chart'] ), 8, '', 'code pmh-chart-json' ),
 			__( 'Body measurements ("measure yourself"). Stored separately; rendered only when a shortcode asks for it.', 'printful-meta-helper' )
 		);
 

@@ -21,7 +21,7 @@ filtered to the sizes the product actually has variations for.
 | 5 | Variation filter | done |
 | 6 | `[pmh_materials]`, `[pmh_blank_name]` | done |
 | 7 | Product metabox: filtered single select with preview, and a mismatch warning when the product's own Printful chart differs from the blank | done |
-| 8 | Size grid editor | todo |
+| 8 | Size grid editor | done |
 | 9 | Grouping tool: scan products carrying `pf_advanced_size_chart`, group by identical inch rows, propose one blank per group, bulk-assign | queued |
 
 ## Printful's own copy of the chart
@@ -76,7 +76,11 @@ Precedence when more than one box is filled: JSON, then product, then
 pasted table.
 
 Each box is ignored when empty, so saving again never clobbers data. The two
-chart fields are editable JSON until the grid editor lands. Import results
+chart fields are grids: columns are sizes, rows are measurements, a cell takes
+`28`, `34-37` or `16 ½`, and sizes and measurements can be added, renamed and
+removed. "Edit as JSON" exposes the stored structure; the grid writes to that
+JSON on every change, so it is what gets saved either way. Cells that cannot
+be parsed are outlined and dropped on save. Import results
 and errors show as a notice on the edit screen; the add-new form saves via
 AJAX, so open the blank afterwards to see what was imported.
 

@@ -219,5 +219,26 @@ final class PMH_Taxonomy {
 			return;
 		}
 		wp_enqueue_style( 'pmh-admin', PMH_URL . 'admin/css/admin.css', array(), PMH_VERSION );
+		wp_enqueue_script( 'pmh-size-grid', PMH_URL . 'admin/js/size-grid.js', array(), PMH_VERSION, array( 'in_footer' => true ) );
+		wp_add_inline_script(
+			'pmh-size-grid',
+			'window.pmhGridI18n = ' . wp_json_encode(
+				array(
+					'editJson'        => __( 'Edit as JSON', 'printful-meta-helper' ),
+					'editGrid'        => __( 'Back to grid', 'printful-meta-helper' ),
+					'badJson'         => __( 'The JSON could not be read. Fix it in the JSON view, or clear it and start the grid from scratch.', 'printful-meta-helper' ),
+					'note'            => __( 'Note', 'printful-meta-helper' ),
+					'notePlaceholder' => __( 'Product measurements may vary by up to 2" (5 cm).', 'printful-meta-helper' ),
+					'measurement'     => __( 'Measurement', 'printful-meta-helper' ),
+					'labelPlaceholder' => __( 'Length', 'printful-meta-helper' ),
+					'size'            => __( 'Size', 'printful-meta-helper' ),
+					'sizeName'        => __( 'Size name', 'printful-meta-helper' ),
+					'removeSize'      => __( 'Remove this size', 'printful-meta-helper' ),
+					'removeRow'       => __( 'Remove this measurement', 'printful-meta-helper' ),
+					'empty'           => __( 'No chart yet. Add a size and a measurement, or use one of the import boxes above.', 'printful-meta-helper' ),
+				)
+			) . ';',
+			'before'
+		);
 	}
 }
