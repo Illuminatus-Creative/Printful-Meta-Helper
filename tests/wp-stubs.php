@@ -12,6 +12,7 @@ final class PMH_Fake_WP {
 	public static array $term_meta    = array(); // term_id => [key => value]
 	public static array $object_terms = array(); // object_id => [taxonomy => [term_id, ...]]
 	public static array $transients   = array();
+	public static array $primed_meta  = array(); // post ids whose meta is in the object cache
 	public static array $set_calls    = array(); // wp_set_object_terms() log
 	public static bool $can           = true;
 	/** @var callable|null fn( string $cap, array $args ): bool — overrides $can when set. */
@@ -32,6 +33,7 @@ final class PMH_Fake_WP {
 		self::$term_meta    = array();
 		self::$object_terms = array();
 		self::$transients   = array();
+		self::$primed_meta  = array();
 		self::$set_calls    = array();
 		self::$can          = true;
 		self::$can_callback = null;
@@ -130,7 +132,17 @@ function delete_transient( $k ) { unset( PMH_Fake_WP::$transients[ $k ] ); retur
 function get_post_type( $id ) { PMH_Fake_WP::count( 'get_post_type' ); return PMH_Fake_WP::$posts[ (int) $id ]['post_type'] ?? false; }
 function wp_get_post_parent_id( $id ) { return (int) ( PMH_Fake_WP::$posts[ (int) $id ]['post_parent'] ?? 0 ); }
 function get_the_title( $id ) { PMH_Fake_WP::count( 'get_the_title' ); return PMH_Fake_WP::$posts[ (int) $id ]['title'] ?? ''; }
-function get_post_meta( $id, $key = '', $single = false ) { PMH_Fake_WP::count( 'get_post_meta' );
+function update_meta_cache( $type, $ids ) {
+	PMH_Fake_WP::count( 'update_meta_cache' );
+	foreach ( (array) $ids as $id ) {
+		PMH_Fake_WP::$primed_meta[ (int) $id ] = true;
+	}
+	return array();
+}
+function get_post_meta( $id, $key = '', $single = false ) {
+	// A miss is one SELECT in core; a hit is served from the object cache.
+	PMH_Fake_WP::count( isset( PMH_Fake_WP::$primed_meta[ (int) $id ] ) ? 'get_post_meta_hit' : 'get_post_meta_miss' );
+	PMH_Fake_WP::$primed_meta[ (int) $id ] = true;
 	$v = PMH_Fake_WP::$post_meta[ (int) $id ][ $key ] ?? '';
 	return $single ? $v : ( '' === $v ? array() : array( $v ) );
 }
@@ -176,6 +188,9 @@ function get_terms( $args ) { PMH_Fake_WP::count( 'get_terms' );
 			continue;
 		}
 		if ( ! empty( $args['include'] ) && ! in_array( $term->term_id, array_map( 'intval', (array) $args['include'] ), true ) ) {
+			continue;
+		}
+		if ( ! empty( $args['slug'] ) && ! in_array( $term->slug, (array) $args['slug'], true ) ) {
 			continue;
 		}
 		$out[] = $term;

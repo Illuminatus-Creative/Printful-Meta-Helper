@@ -48,17 +48,28 @@ final class PMH_Sizes {
 		$result['attribute'] = $attribute;
 
 		$meta_key = wc_variation_attribute_name( $attribute );
-		$sizes    = array();
+		$children = array_map( 'intval', $product->get_visible_children() );
+		$raws     = array();
 
-		foreach ( $product->get_visible_children() as $child_id ) {
+		// One query for every variation's meta instead of one per variation.
+		// A no-op for IDs WooCommerce's own add-to-cart form already primed.
+		if ( $children ) {
+			update_meta_cache( 'post', $children );
+		}
+
+		foreach ( $children as $child_id ) {
 			$raw = get_post_meta( $child_id, $meta_key, true );
 			if ( '' === $raw || null === $raw ) {
 				// "Any size" variation: every size is purchasable.
 				return $result;
 			}
-			$sizes[] = PMH_Size_Chart::normalise_size( self::resolve_value( $attribute, (string) $raw ) );
+			$raws[ (string) $raw ] = true;
 		}
 
+		$sizes = array();
+		foreach ( self::resolve_values( $attribute, array_keys( $raws ) ) as $name ) {
+			$sizes[] = PMH_Size_Chart::normalise_size( $name );
+		}
 		$sizes = array_values( array_unique( array_filter( $sizes ) ) );
 
 		/**
@@ -108,13 +119,34 @@ final class PMH_Sizes {
 	 * into the term name ("2xl" -> "2XL"). Custom attributes store the text.
 	 */
 	public static function resolve_value( string $attribute, string $raw ): string {
-		if ( taxonomy_exists( $attribute ) ) {
-			$term = get_term_by( 'slug', $raw, $attribute );
+		return self::resolve_values( $attribute, array( $raw ) )[0] ?? $raw;
+	}
+
+	/**
+	 * Resolve many raw values with a single term query, preserving order.
+	 * Values with no matching term come back unchanged.
+	 *
+	 * @param string[] $raws Distinct raw meta values.
+	 * @return string[]
+	 */
+	public static function resolve_values( string $attribute, array $raws ): array {
+		if ( ! $raws || ! taxonomy_exists( $attribute ) ) {
+			return array_values( $raws );
+		}
+		$terms = get_terms(
+			array(
+				'taxonomy'   => $attribute,
+				'slug'       => $raws,
+				'hide_empty' => false,
+			)
+		);
+		$names = array();
+		foreach ( is_wp_error( $terms ) ? array() : $terms as $term ) {
 			if ( $term instanceof WP_Term ) {
-				return $term->name;
+				$names[ $term->slug ] = $term->name;
 			}
 		}
-		return $raw;
+		return array_map( static fn( string $raw ): string => $names[ $raw ] ?? $raw, array_values( $raws ) );
 	}
 
 	/**

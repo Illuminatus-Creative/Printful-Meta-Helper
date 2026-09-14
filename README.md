@@ -176,6 +176,12 @@ grouping scan and the data access are covered alongside the pure classes.
 The JavaScript tests load each admin and public script into a jsdom page
 and drive it through clicks and input events.
 
+`php tests/bench/profile.php [variations] [products] [blanks]` profiles the
+front-end render, the product-screen data and the Blank Groups scan against
+the fakes, reporting wall time and the calls that are a query or cache round
+trip on a real site. Cold-cache cost per product page is one meta prime and
+one term query regardless of variation count.
+
 ## Conventions
 
 - Prefix `pmh_` / `PMH_`, text domain `printful-meta-helper`.

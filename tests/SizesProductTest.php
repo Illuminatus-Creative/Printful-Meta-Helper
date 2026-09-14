@@ -67,17 +67,32 @@ final class SizesProductTest extends TestCase {
 		self::assertSame( PMH_Sizes::UNFILTERED, PMH_Sizes::for_product( 999 )['state'] );
 	}
 
-	public function test_meta_and_terms_are_read_once_per_variation(): void {
-		// Documents the current cost: one meta read and one term lookup per
-		// variation. The profiler in tests/bench/ measures the same thing.
+	public function test_variation_meta_is_primed_once_and_terms_fetched_once(): void {
 		$sizes = array();
 		for ( $i = 0; $i < 40; $i++ ) {
 			$sizes[ 100 + $i ] = array( 's', 'm', 'l', 'xl', '2xl' )[ $i % 5 ];
 		}
 		$this->product( $sizes, array( new PMH_Fake_Attribute( 'pa_size', true ) ) );
 		PMH_Fake_WP::$calls = array();
+		$r = PMH_Sizes::for_product( 1 );
+
+		self::assertSame( array( 'S', 'M', 'L', 'XL', '2XL' ), $r['sizes'] );
+		self::assertSame( 1, PMH_Fake_WP::$calls['update_meta_cache'], 'one prime for all variations' );
+		self::assertSame( 40, PMH_Fake_WP::$calls['get_post_meta_hit'] );
+		self::assertArrayNotHasKey( 'get_post_meta_miss', PMH_Fake_WP::$calls );
+		self::assertSame( 1, PMH_Fake_WP::$calls['get_terms'], 'one term query for all distinct slugs' );
+		self::assertArrayNotHasKey( 'get_term_by', PMH_Fake_WP::$calls );
+	}
+
+	public function test_unmatched_slugs_fall_back_to_the_raw_value(): void {
+		$this->product( array( 10 => 's', 11 => 'not-a-term' ), array( new PMH_Fake_Attribute( 'pa_size', true ) ) );
+		self::assertSame( array( 'S', 'NOT-A-TERM' ), PMH_Sizes::for_product( 1 )['sizes'] );
+	}
+
+	public function test_custom_attribute_values_need_no_term_query(): void {
+		$this->product( array( 10 => 'M', 11 => 'L' ), array( new PMH_Fake_Attribute( 'Size', true ) ), 'attribute_size' );
+		PMH_Fake_WP::$calls = array();
 		PMH_Sizes::for_product( 1 );
-		self::assertSame( 40, PMH_Fake_WP::$calls['get_post_meta'] );
-		self::assertSame( 40, PMH_Fake_WP::$calls['get_term_by'] );
+		self::assertArrayNotHasKey( 'get_terms', PMH_Fake_WP::$calls );
 	}
 }
