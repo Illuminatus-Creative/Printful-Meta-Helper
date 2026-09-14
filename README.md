@@ -16,11 +16,22 @@ filtered to the sizes the product actually has variations for.
 | 1 | `pmh_blank` taxonomy, single-blank enforcement, products-list filter | done |
 | 2 | Term meta: applies-to categories, materials, kind, size chart | done |
 | 3 | Importer: Printful size JSON, page text paste, materials paste | done |
+| 3b | Import from a product's `pf_advanced_size_chart` meta by ID or SKU | todo |
 | 4 | `[pmh_size_chart]` renderer and unit toggle | done |
 | 5 | Variation filter | done |
 | 6 | `[pmh_materials]`, `[pmh_blank_name]` | todo |
-| 7 | Product metabox: filtered single select with preview | todo |
+| 7 | Product metabox: filtered single select with preview, and a mismatch warning when the product's own Printful chart differs from the blank | todo |
 | 8 | Size grid editor | todo |
+| 9 | Grouping tool: scan products carrying `pf_advanced_size_chart`, group by identical inch rows, propose one blank per group, bulk-assign | queued |
+
+## Printful's own copy of the chart
+
+Printful's sync writes the size-guide JSON to the product meta key
+`pf_advanced_size_chart` on products it pushes. Legacy products do not have
+it. The plugin never renders from it: it is a per-product snapshot and the
+blank is the single source of truth. It is used only as an import source
+(phase 3b), as a cross-check in the product metabox (phase 7), and to seed
+blanks in bulk (phase 9).
 
 ## Install
 
