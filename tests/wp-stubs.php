@@ -14,6 +14,8 @@ final class PMH_Fake_WP {
 	public static array $transients   = array();
 	public static array $set_calls    = array(); // wp_set_object_terms() log
 	public static bool $can           = true;
+	/** @var callable|null fn( string $cap, array $args ): bool — overrides $can when set. */
+	public static $can_callback   = null;
 	public static bool $nonce_ok      = true;
 	public static int $next_term_id   = 100;
 
@@ -26,6 +28,7 @@ final class PMH_Fake_WP {
 		self::$transients   = array();
 		self::$set_calls    = array();
 		self::$can          = true;
+		self::$can_callback = null;
 		self::$nonce_ok     = true;
 		self::$next_term_id = 100;
 	}
@@ -106,7 +109,7 @@ function selected( $a, $b = true, $echo = true ) { return $a == $b ? ' selected=
 
 /* ---- auth ---- */
 function wp_verify_nonce( $n, $a ) { return PMH_Fake_WP::$nonce_ok; }
-function current_user_can( $cap, ...$args ) { return PMH_Fake_WP::$can; }
+function current_user_can( $cap, ...$args ) { return PMH_Fake_WP::$can_callback ? (bool) call_user_func( PMH_Fake_WP::$can_callback, $cap, $args ) : PMH_Fake_WP::$can; }
 function get_current_user_id() { return 1; }
 function wp_nonce_field( $a, $n ) { echo '<input type="hidden" name="' . $n . '" value="nonce">'; }
 function get_current_screen() { return null; }

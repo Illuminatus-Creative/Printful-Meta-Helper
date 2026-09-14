@@ -72,4 +72,81 @@ final class GroupingTest extends TestCase {
 		self::assertSame( array( $blank->term_id ), $group['blank_matches'] );
 		self::assertSame( 'Product 2', $group['products'][2]['title'] );
 	}
+
+	private function seed_two_products_in_one_group(): string {
+		PMH_Fake_WP::add_post( 1 );
+		PMH_Fake_WP::add_post( 2 );
+		PMH_Fake_WP::$post_meta[1][ PMH_Importer::PRODUCT_META_KEY ] = pmh_fixture( 'gildan-5000.json' );
+		PMH_Fake_WP::$post_meta[2][ PMH_Importer::PRODUCT_META_KEY ] = pmh_fixture( 'gildan-5000.json' );
+		return PMH_Size_Chart::signature( pmh_test_chart() );
+	}
+
+	public function test_apply_creates_a_blank_from_the_group_and_assigns_it(): void {
+		$sig = $this->seed_two_products_in_one_group();
+		PMH_Fake_WP::add_term( 'product_cat', 'Tees', 5 );
+		wp_set_object_terms( 1, array( 5 ), 'product_cat' );
+
+		$r = PMH_Grouping::apply_groups(
+			array( array( 'apply' => '1', 'signature' => $sig, 'mode' => 'new', 'name' => ' Gildan <b>5000</b> ' ) ),
+			true
+		);
+
+		self::assertSame( array( 'created' => 1, 'assigned' => 2, 'skipped' => 0, 'errors' => array() ), $r );
+		$blank = PMH_Blank::for_product( 2 );
+		self::assertSame( 'Gildan 5000', $blank->name, 'name sanitised' );
+		$data = PMH_Blank::get( $blank->term_id );
+		self::assertSame( 'apparel', $data['kind'] );
+		self::assertSame( array( 5 ), $data['cats'], 'union of product categories' );
+		self::assertSame( 8, count( $data['chart']['sizes'] ) );
+		self::assertSame( 3, count( $data['body_chart']['rows'] ) );
+	}
+
+	public function test_apply_skips_products_the_user_cannot_edit(): void {
+		$sig   = $this->seed_two_products_in_one_group();
+		$blank = PMH_Fake_WP::add_term( 'pmh_blank', 'Existing' );
+		PMH_Fake_WP::$can_callback = static fn( string $cap, array $args ) => ! ( 'edit_post' === $cap && 2 === (int) ( $args[0] ?? 0 ) );
+
+		$r = PMH_Grouping::apply_groups(
+			array( array( 'apply' => '1', 'signature' => $sig, 'mode' => 'existing', 'existing' => (string) $blank->term_id ) ),
+			false
+		);
+
+		self::assertSame( 1, $r['assigned'] );
+		self::assertSame( 1, $r['skipped'] );
+		self::assertNotNull( PMH_Blank::for_product( 1 ) );
+		self::assertNull( PMH_Blank::for_product( 2 ), 'product the user may not edit is untouched' );
+	}
+
+	public function test_apply_rejects_bad_rows_without_writing(): void {
+		$sig = $this->seed_two_products_in_one_group();
+		$r   = PMH_Grouping::apply_groups(
+			array(
+				array( 'apply' => '1', 'signature' => 'deadbeef', 'mode' => 'new', 'name' => 'X' ),
+				array( 'apply' => '1', 'signature' => $sig, 'mode' => 'existing', 'existing' => '999' ),
+				array( 'apply' => '1', 'signature' => $sig, 'mode' => 'new', 'name' => '' ),
+				array( 'apply' => '', 'signature' => $sig, 'mode' => 'new', 'name' => 'Unticked' ),
+				'not a row',
+			),
+			true
+		);
+		self::assertSame( 0, $r['created'] );
+		self::assertSame( 0, $r['assigned'] );
+		self::assertCount( 3, $r['errors'] );
+		self::assertSame( array(), PMH_Fake_WP::$set_calls );
+	}
+
+	public function test_apply_refuses_duplicate_blank_name_and_leaves_already_assigned(): void {
+		$sig   = $this->seed_two_products_in_one_group();
+		$other = PMH_Fake_WP::add_term( 'pmh_blank', 'Taken' );
+		wp_set_object_terms( 1, array( $other->term_id ), 'pmh_blank' );
+		PMH_Fake_WP::$set_calls = array();
+
+		$dup = PMH_Grouping::apply_groups( array( array( 'apply' => '1', 'signature' => $sig, 'mode' => 'new', 'name' => 'Taken' ) ), true );
+		self::assertSame( 0, $dup['created'] );
+		self::assertStringContainsString( 'already exists', $dup['errors'][0] );
+
+		$ok = PMH_Grouping::apply_groups( array( array( 'apply' => '1', 'signature' => $sig, 'mode' => 'existing', 'existing' => (string) $other->term_id ) ), true );
+		self::assertSame( 1, $ok['skipped'], 'product 1 already assigned and left alone' );
+		self::assertSame( 1, $ok['assigned'] );
+	}
 }

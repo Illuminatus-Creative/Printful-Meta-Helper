@@ -301,8 +301,37 @@ final class PMH_Grouping {
 		check_admin_referer( self::ACTION, self::NONCE );
 
 		$skip_assigned = ! empty( $_POST['skip_assigned'] );
-		$submitted     = isset( $_POST['groups'] ) && is_array( $_POST['groups'] ) ? wp_unslash( $_POST['groups'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- sanitised per field below.
+		$submitted     = isset( $_POST['groups'] ) && is_array( $_POST['groups'] ) ? wp_unslash( $_POST['groups'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- sanitised in apply_groups().
 
+		$result = self::apply_groups( $submitted, $skip_assigned );
+
+		PMH_Notices::set(
+			'groups',
+			array(
+				sprintf(
+					/* translators: 1: blanks created, 2: products assigned, 3: products skipped */
+					__( '%1$d blanks created, %2$d products assigned, %3$d products skipped (already assigned, or not yours to edit).', 'printful-meta-helper' ),
+					$result['created'],
+					$result['assigned'],
+					$result['skipped']
+				),
+			),
+			$result['errors']
+		);
+
+		wp_safe_redirect( add_query_arg( array( 'pmh_result' => 1 ), admin_url( 'edit.php?post_type=product&page=' . self::SLUG ) ) );
+		exit;
+	}
+
+	/**
+	 * Apply the submitted group rows. Separated from the request handler so
+	 * it can be tested; every field is sanitised here.
+	 *
+	 * @param array $submitted Raw groups[] rows from the form.
+	 * @param bool  $skip_assigned Leave products that already have a blank.
+	 * @return array{created: int, assigned: int, skipped: int, errors: string[]}
+	 */
+	public static function apply_groups( array $submitted, bool $skip_assigned ): array {
 		$scan     = self::scan();
 		$created  = 0;
 		$assigned = 0;
@@ -346,6 +375,12 @@ final class PMH_Grouping {
 					$skipped++;
 					continue;
 				}
+				// The screen-level capability lets the user run the tool; each
+				// product still needs to be one they may edit and tag.
+				if ( ! current_user_can( 'edit_post', (int) $pid ) || ! current_user_can( 'assign_product_terms' ) ) {
+					$skipped++;
+					continue;
+				}
 				if ( $p['blank_id'] === (int) $term_id ) {
 					continue;
 				}
@@ -359,22 +394,12 @@ final class PMH_Grouping {
 			}
 		}
 
-		PMH_Notices::set(
-			'groups',
-			array(
-				sprintf(
-					/* translators: 1: blanks created, 2: products assigned, 3: products skipped */
-					__( '%1$d blanks created, %2$d products assigned, %3$d already-assigned products left alone.', 'printful-meta-helper' ),
-					$created,
-					$assigned,
-					$skipped
-				),
-			),
-			$errors
+		return array(
+			'created'  => $created,
+			'assigned' => $assigned,
+			'skipped'  => $skipped,
+			'errors'   => array_values( array_unique( $errors ) ),
 		);
-
-		wp_safe_redirect( add_query_arg( array( 'pmh_result' => 1 ), admin_url( 'edit.php?post_type=product&page=' . self::SLUG ) ) );
-		exit;
 	}
 
 	/**

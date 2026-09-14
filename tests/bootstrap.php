@@ -15,7 +15,7 @@ require_once __DIR__ . '/wp-stubs.php';
 
 spl_autoload_register(
 	static function ( string $class ): void {
-		if ( 0 !== strpos( $class, 'PMH_' ) ) {
+		if ( ! preg_match( '/^PMH_[A-Za-z0-9_]+$/', $class ) ) {
 			return;
 		}
 		$file = PMH_DIR . 'includes/class-' . str_replace( '_', '-', strtolower( $class ) ) . '.php';

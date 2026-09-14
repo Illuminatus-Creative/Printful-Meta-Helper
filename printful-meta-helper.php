@@ -63,7 +63,10 @@ add_action(
  * PMH_Size_Chart -> includes/class-pmh-size-chart.php
  */
 function pmh_autoload( string $class ): void {
-	if ( 0 !== strpos( $class, 'PMH_' ) ) {
+	// Strict allowlist: class names can carry namespace backslashes, and
+	// unserialize() elsewhere on a site triggers autoloading with
+	// attacker-chosen names. Never turn one into a path.
+	if ( ! preg_match( '/^PMH_[A-Za-z0-9_]+$/', $class ) ) {
 		return;
 	}
 	$file = PMH_DIR . 'includes/class-' . str_replace( '_', '-', strtolower( $class ) ) . '.php';
