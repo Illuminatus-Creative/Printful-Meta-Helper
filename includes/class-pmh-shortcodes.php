@@ -10,6 +10,52 @@ final class PMH_Shortcodes {
 
 	public static function init(): void {
 		add_shortcode( 'pmh_size_chart', array( __CLASS__, 'size_chart' ) );
+		add_shortcode( 'pmh_materials', array( __CLASS__, 'materials' ) );
+		add_shortcode( 'pmh_blank_name', array( __CLASS__, 'blank_name' ) );
+	}
+
+	/**
+	 * [pmh_materials product_id="" fields="material,weight,construction,care" labels="1" class=""]
+	 */
+	public static function materials( $atts ): string {
+		$atts = shortcode_atts(
+			array(
+				'product_id' => 0,
+				'fields'     => 'material,weight,construction,care',
+				'labels'     => '1',
+				'class'      => '',
+			),
+			$atts,
+			'pmh_materials'
+		);
+
+		$product_id = self::resolve_product_id( $atts['product_id'] );
+		$blank      = $product_id ? PMH_Blank::for_product( $product_id ) : null;
+		if ( ! $blank ) {
+			return '';
+		}
+
+		PMH_Renderer::enqueue_assets();
+
+		return PMH_Renderer::materials(
+			$blank,
+			PMH_Blank::get( $blank->term_id ),
+			array(
+				'fields' => preg_split( '/\s*,\s*/', strtolower( (string) $atts['fields'] ), -1, PREG_SPLIT_NO_EMPTY ),
+				'labels' => self::truthy( $atts['labels'] ),
+				'class'  => (string) $atts['class'],
+			)
+		);
+	}
+
+	/**
+	 * [pmh_blank_name product_id=""] — plain text for use inside a sentence.
+	 */
+	public static function blank_name( $atts ): string {
+		$atts       = shortcode_atts( array( 'product_id' => 0 ), $atts, 'pmh_blank_name' );
+		$product_id = self::resolve_product_id( $atts['product_id'] );
+		$blank      = $product_id ? PMH_Blank::for_product( $product_id ) : null;
+		return $blank ? esc_html( $blank->name ) : '';
 	}
 
 	/**

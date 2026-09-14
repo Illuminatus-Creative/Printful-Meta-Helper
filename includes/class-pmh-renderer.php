@@ -148,4 +148,142 @@ final class PMH_Renderer {
 		 */
 		return (string) apply_filters( 'pmh_size_chart_html', $html, $blank, $chart, $opts );
 	}
+
+	/**
+	 * Materials as a definition list. Empty fields are skipped; colour
+	 * exceptions render as a sub-list under the base material.
+	 *
+	 * .pmh-materials (+ --{blank-slug})
+	 *   dl.pmh-materials__list
+	 *     div.pmh-materials__item.pmh-materials__item--{field}
+	 *       dt.pmh-materials__label
+	 *       dd.pmh-materials__value (+ ul.pmh-materials__lines for multi-line fields,
+	 *                                ul.pmh-materials__exceptions under material)
+	 *
+	 * @param WP_Term $blank Blank.
+	 * @param array   $data  PMH_Blank::get() result.
+	 * @param array   $opts  fields (string[]), labels (bool), class (string).
+	 */
+	public static function materials( WP_Term $blank, array $data, array $opts = array() ): string {
+		$opts = wp_parse_args(
+			$opts,
+			array(
+				'fields' => array( 'material', 'weight', 'construction', 'care' ),
+				'labels' => true,
+				'class'  => '',
+			)
+		);
+
+		/**
+		 * Filter the labels shown next to each materials field.
+		 *
+		 * @param array $labels field => label.
+		 */
+		$labels = (array) apply_filters(
+			'pmh_materials_labels',
+			array(
+				'material'     => __( 'Material', 'printful-meta-helper' ),
+				'weight'       => __( 'Fabric weight', 'printful-meta-helper' ),
+				'construction' => __( 'Construction', 'printful-meta-helper' ),
+				'care'         => __( 'Care', 'printful-meta-helper' ),
+			),
+			$blank
+		);
+
+		$items = '';
+		foreach ( (array) $opts['fields'] as $field ) {
+			$field = trim( (string) $field );
+			$value = '';
+			switch ( $field ) {
+				case 'material':
+					$value = self::material_value( $data );
+					break;
+				case 'weight':
+					$value = '' !== $data['fabric_weight'] ? esc_html( $data['fabric_weight'] ) : '';
+					break;
+				case 'construction':
+					$value = self::lines_value( $data['construction'] );
+					break;
+				case 'care':
+					$value = self::lines_value( $data['care'] );
+					break;
+				default:
+					continue 2;
+			}
+			if ( '' === $value ) {
+				continue;
+			}
+			$items .= '<div class="pmh-materials__item pmh-materials__item--' . esc_attr( $field ) . '">';
+			if ( $opts['labels'] ) {
+				$items .= '<dt class="pmh-materials__label">' . esc_html( $labels[ $field ] ?? ucfirst( $field ) ) . '</dt>';
+			}
+			$items .= '<dd class="pmh-materials__value">' . $value . '</dd></div>';
+		}
+
+		if ( '' === $items ) {
+			return '';
+		}
+
+		$classes = array( 'pmh-materials', 'pmh-materials--' . $blank->slug );
+		foreach ( preg_split( '/\s+/', (string) $opts['class'], -1, PREG_SPLIT_NO_EMPTY ) as $extra ) {
+			$classes[] = sanitize_html_class( $extra );
+		}
+
+		$html = '<div class="' . esc_attr( implode( ' ', array_unique( $classes ) ) ) . '" data-pmh-blank="' . esc_attr( $blank->slug ) . '">'
+			. '<dl class="pmh-materials__list">' . $items . '</dl></div>';
+
+		/**
+		 * Filter the finished materials HTML.
+		 *
+		 * @param string  $html  Markup.
+		 * @param WP_Term $blank Blank.
+		 * @param array   $data  Blank data.
+		 * @param array   $opts  Render options.
+		 */
+		return (string) apply_filters( 'pmh_materials_html', $html, $blank, $data, $opts );
+	}
+
+	private static function material_value( array $data ): string {
+		$base       = trim( (string) $data['material_solid'] );
+		$exceptions = self::split_lines( (string) $data['material_exceptions'] );
+		if ( '' === $base && ! $exceptions ) {
+			return '';
+		}
+		$html = '' !== $base ? '<span class="pmh-materials__base">' . esc_html( $base ) . '</span>' : '';
+		if ( $exceptions ) {
+			$html .= '<ul class="pmh-materials__exceptions">';
+			foreach ( $exceptions as $line ) {
+				$html .= '<li>' . esc_html( $line ) . '</li>';
+			}
+			$html .= '</ul>';
+		}
+		return $html;
+	}
+
+	private static function lines_value( string $text ): string {
+		$lines = self::split_lines( $text );
+		if ( ! $lines ) {
+			return '';
+		}
+		if ( 1 === count( $lines ) ) {
+			return esc_html( $lines[0] );
+		}
+		$html = '<ul class="pmh-materials__lines">';
+		foreach ( $lines as $line ) {
+			$html .= '<li>' . esc_html( $line ) . '</li>';
+		}
+		return $html . '</ul>';
+	}
+
+	/** @return string[] */
+	private static function split_lines( string $text ): array {
+		$lines = array();
+		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
+			$line = trim( $line );
+			if ( '' !== $line ) {
+				$lines[] = $line;
+			}
+		}
+		return $lines;
+	}
 }

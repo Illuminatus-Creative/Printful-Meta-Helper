@@ -97,6 +97,19 @@ final class SizeChartTest extends TestCase {
 		self::assertSame( array( 'S', 'L', '2XL' ), array_keys( $filtered['rows'][0]['values'] ) );
 	}
 
+	public function test_signature_ignores_note_and_float_noise_but_not_sizes(): void {
+		$a = PMH_Importer::from_json( pmh_fixture( 'gildan-5000.json' ) )['product'];
+		$b = $a;
+		$b['note'] = 'different note';
+		$b['rows'][2]['values']['S'] = array( 15.6300000001 );
+		self::assertNotSame( '', PMH_Size_Chart::signature( $a ) );
+		self::assertSame( PMH_Size_Chart::signature( $a ), PMH_Size_Chart::signature( $b ) );
+
+		$c = PMH_Size_Chart::filter_sizes( $a, array( 'S', 'M' ) );
+		self::assertNotSame( PMH_Size_Chart::signature( $a ), PMH_Size_Chart::signature( $c ) );
+		self::assertSame( '', PMH_Size_Chart::signature( PMH_Size_Chart::empty_chart() ) );
+	}
+
 	public function test_format_values(): void {
 		self::assertSame( '28', PMH_Size_Chart::format_values( array( 28.0 ) ) );
 		self::assertSame( '15.63', PMH_Size_Chart::format_values( array( 15.63 ) ) );

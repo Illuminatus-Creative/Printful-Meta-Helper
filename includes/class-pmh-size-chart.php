@@ -291,6 +291,25 @@ final class PMH_Size_Chart {
 		return self::normalise( $chart );
 	}
 
+	/**
+	 * Stable fingerprint of a chart's sizes and rows (note ignored), for
+	 * comparing a blank against a product's own Printful chart.
+	 */
+	public static function signature( $chart ): string {
+		$chart = self::normalise( $chart );
+		if ( self::is_empty( $chart ) ) {
+			return '';
+		}
+		return md5(
+			(string) json_encode(
+				array(
+					'sizes' => $chart['sizes'],
+					'rows'  => $chart['rows'],
+				)
+			)
+		);
+	}
+
 	public static function is_empty( $chart ): bool {
 		return empty( $chart['rows'] ) || empty( $chart['sizes'] );
 	}

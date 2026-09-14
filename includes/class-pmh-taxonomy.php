@@ -68,8 +68,11 @@ final class PMH_Taxonomy {
 				'show_admin_column'     => true,
 				'query_var'             => false,
 				'rewrite'               => false,
-				// Explicit: a custom meta_box_cb (phase 7) would otherwise fall
-				// back to the name-based sanitiser and create junk terms from IDs.
+				// Single select on the product screen. The sanitize callback
+				// must be the ID-based one: a custom meta_box_cb otherwise
+				// defaults to the name-based sanitiser and turns IDs into new
+				// terms called "12".
+				'meta_box_cb'           => array( 'PMH_Product_Meta', 'render_metabox' ),
 				'meta_box_sanitize_cb'  => 'taxonomy_meta_box_sanitize_cb_checkboxes',
 				'capabilities'          => array(
 					'manage_terms' => 'manage_product_terms',

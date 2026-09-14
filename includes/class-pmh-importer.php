@@ -17,6 +17,9 @@ final class PMH_Import_Exception extends RuntimeException {}
 
 final class PMH_Importer {
 
+	/** Product meta key Printful's WooCommerce sync writes the size JSON to. */
+	public const PRODUCT_META_KEY = 'pf_advanced_size_chart';
+
 	/**
 	 * @return array{product: ?array, body: ?array}
 	 * @throws PMH_Import_Exception
@@ -49,6 +52,25 @@ final class PMH_Importer {
 			'product' => self::table_from_json( $data['productMeasurements'] ?? null, $sizes ),
 			'body'    => self::table_from_json( $data['modelMeasurements'] ?? null, $sizes ),
 		);
+	}
+
+	/**
+	 * Printful's sync writes the size-guide JSON to product meta on products
+	 * it pushes (legacy products have none). Same parser, different source.
+	 *
+	 * @return array{product: ?array, body: ?array}|null null when the meta is
+	 *         absent or unreadable.
+	 */
+	public static function from_product_meta( int $product_id ): ?array {
+		$json = get_post_meta( $product_id, self::PRODUCT_META_KEY, true );
+		if ( ! is_string( $json ) || '' === trim( $json ) ) {
+			return null;
+		}
+		try {
+			return self::from_json( $json );
+		} catch ( PMH_Import_Exception $e ) {
+			return null;
+		}
 	}
 
 	private static function table_from_json( $table, array $sizes ): ?array {

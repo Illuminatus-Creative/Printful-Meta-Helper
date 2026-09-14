@@ -19,8 +19,8 @@ filtered to the sizes the product actually has variations for.
 | 3b | Import from a product's `pf_advanced_size_chart` meta by ID or SKU | todo |
 | 4 | `[pmh_size_chart]` renderer and unit toggle | done |
 | 5 | Variation filter | done |
-| 6 | `[pmh_materials]`, `[pmh_blank_name]` | todo |
-| 7 | Product metabox: filtered single select with preview, and a mismatch warning when the product's own Printful chart differs from the blank | todo |
+| 6 | `[pmh_materials]`, `[pmh_blank_name]` | done |
+| 7 | Product metabox: filtered single select with preview, and a mismatch warning when the product's own Printful chart differs from the blank | done |
 | 8 | Size grid editor | todo |
 | 9 | Grouping tool: scan products carrying `pf_advanced_size_chart`, group by identical inch rows, propose one blank per group, bulk-assign | queued |
 
@@ -41,10 +41,20 @@ plugin header by hand.
 
 ## Assigning blanks
 
-Products → Blanks to create terms. Assign on the product edit screen, or use
-Bulk Edit on the products list. The list has a "No blank assigned" filter to
-find stragglers. A product can only ever hold one blank; if more than one is
-submitted, the most recently added one wins.
+Products → Blanks to create terms. On the product edit screen the Blank box
+is a single select. It lists only blanks whose "applies to" categories
+intersect the product's ticked categories, re-filtering as you tick; "Show
+all blanks" bypasses that. The panel under it previews the chosen blank:
+material, weight, the sizes that will render given the saved variations, a
+warning when nothing would render, and, on products Printful has pushed,
+whether the blank's chart matches the product's own Printful chart. If the
+saved blank falls outside the filter it stays selected and is flagged rather
+than silently dropped.
+
+Bulk Edit on the products list assigns across many products at once. The
+list has a "No blank assigned" filter to find stragglers. A product can only
+ever hold one blank; if more than one is submitted, the most recently added
+one wins.
 
 ## Editing a blank
 
@@ -64,12 +74,21 @@ chart fields are editable JSON until the grid editor lands. Import results
 and errors show as a notice on the edit screen; the add-new form saves via
 AJAX, so open the blank afterwards to see what was imported.
 
-## Shortcode
+## Shortcodes
 
 ```
 [pmh_size_chart]
 [pmh_size_chart product_id="123" unit="cm" toggle="0" note="0" table="body" class="extra classes"]
+[pmh_materials]
+[pmh_materials fields="material,weight" labels="0" class="extra classes"]
+[pmh_blank_name]
 ```
+
+`[pmh_materials]` renders a definition list of material (with colour
+exceptions as a sub-list), fabric weight, construction and care, skipping
+empty fields, for any blank kind. `[pmh_blank_name]` is the blank's name as
+plain text for use inside a sentence. All three return an empty string when
+the product has no blank.
 
 Defaults to the product in the loop or the queried product. Renders the
 blank's garment chart (`table="body"` for body measurements) with one row per
@@ -99,11 +118,19 @@ never edit the plugin stylesheet.
   p.pmh-chart__note
 ```
 
+```
+.pmh-materials.pmh-materials--{blank-slug} > dl.pmh-materials__list
+  div.pmh-materials__item--material|weight|construction|care
+    dt.pmh-materials__label, dd.pmh-materials__value
+      span.pmh-materials__base, ul.pmh-materials__exceptions, ul.pmh-materials__lines
+```
+
 Custom properties on `.pmh-chart`: `--pmh-head-bg`, `--pmh-head-color`,
 `--pmh-value-color`, `--pmh-size-color`, `--pmh-rule`, `--pmh-cell-padding`,
 `--pmh-toggle-bg`, `--pmh-toggle-color`, `--pmh-toggle-border`,
 `--pmh-toggle-active-bg`, `--pmh-toggle-active-color`, `--pmh-note-color`,
-`--pmh-font-size`.
+`--pmh-font-size`. On `.pmh-materials`: `--pmh-materials-label-color`,
+`--pmh-materials-gap`.
 
 The stylesheet and toggle script are enqueued in the head on product pages
 that have a blank, and at render time anywhere else the shortcode appears.
