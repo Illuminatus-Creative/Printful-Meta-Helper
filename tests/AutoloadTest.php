@@ -17,8 +17,12 @@ final class AutoloadTest extends TestCase {
 	}
 
 	public function test_only_plain_pmh_class_names_reach_the_filesystem(): void {
+		// Every name here is one no class could ever have, so class_exists()
+		// is a valid probe. A lowercase "pmh_size_chart" is not listed: PHP
+		// class names are case-insensitive, so class_exists() would report
+		// the already-loaded PMH_Size_Chart and say nothing about the loader.
 		$loader = self::autoloader();
-		foreach ( array( 'PMH_Evil\\..\\..\\x', 'PMH_../../x', 'Other_Class', 'PMH_', 'pmh_size_chart', "PMH_A\0B" ) as $bad ) {
+		foreach ( array( 'PMH_Evil\\..\\..\\x', 'PMH_../../x', 'Other_Class', 'PMH_', "PMH_A\0B" ) as $bad ) {
 			$loader( $bad );
 			self::assertFalse( class_exists( $bad, false ), $bad );
 		}
