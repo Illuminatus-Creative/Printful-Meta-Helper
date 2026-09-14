@@ -15,7 +15,7 @@ final class AdminHelpTest extends TestCase {
 			$used = array_merge( $used, $m[1] );
 			// Keys passed as the trailing $tip argument of PMH_Term_Meta::field().
 			if ( str_ends_with( $file, 'class-pmh-term-meta.php' ) ) {
-				preg_match_all( "/^\\s*'([a-z_]+)'\\s*\\n\\s*\\);/m", (string) file_get_contents( $file ), $m2 );
+				preg_match_all( "/,\\s*'([a-z_]+)'\\s*\\);/", (string) file_get_contents( $file ), $m2 );
 				$used = array_merge( $used, $m2[1] );
 			}
 		}
