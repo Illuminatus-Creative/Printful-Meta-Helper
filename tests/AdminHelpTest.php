@@ -15,8 +15,14 @@ final class AdminHelpTest extends TestCase {
 			$used = array_merge( $used, $m[1] );
 			// Keys passed as the trailing $tip argument of PMH_Term_Meta::field().
 			if ( str_ends_with( $file, 'class-pmh-term-meta.php' ) ) {
-				preg_match_all( "/,\\s*'([a-z_]+)'\\s*\\);/", (string) file_get_contents( $file ), $m2 );
-				$used = array_merge( $used, $m2[1] );
+				// Each field() statement whose last argument is a bare quoted key.
+				// Descriptions may contain semicolons, so cut at the closing ");".
+				preg_match_all( '/self::field\\((.*?)\\);/s', (string) file_get_contents( $file ), $calls );
+				foreach ( $calls[1] as $args ) {
+					if ( preg_match( "/,\\s*'([a-z_]+)'\\s*$/s", rtrim( $args ), $m3 ) ) {
+						$used[] = $m3[1];
+					}
+				}
 			}
 		}
 		$used   = array_unique( $used );
