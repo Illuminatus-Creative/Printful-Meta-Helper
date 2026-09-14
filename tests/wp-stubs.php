@@ -15,6 +15,8 @@ final class PMH_Fake_WP {
 	public static array $primed_meta  = array(); // post ids whose meta is in the object cache
 	public static array $object_cache = array(); // group => key => value
 	public static array $options      = array();
+	/** @var PMH_Fake_Screen|null returned by get_current_screen() */
+	public static $screen             = null;
 	public static array $set_calls    = array(); // wp_set_object_terms() log
 	public static bool $can           = true;
 	/** @var callable|null fn( string $cap, array $args ): bool — overrides $can when set. */
@@ -38,6 +40,7 @@ final class PMH_Fake_WP {
 		self::$primed_meta  = array();
 		self::$object_cache = array();
 		self::$options      = array();
+		self::$screen       = null;
 		PMH_Fake_Cache_Helper::$prefixes = array();
 		self::$set_calls    = array();
 		self::$can          = true;
@@ -80,6 +83,18 @@ class WP_Term {
 	public string $taxonomy = '';
 	public int $parent = 0;
 	public int $count = 0;
+}
+
+/** Enough of WP_Screen for help-tab registration. */
+class PMH_Fake_Screen {
+	public string $id = '';
+	public string $base = '';
+	public string $post_type = '';
+	public string $taxonomy = '';
+	public array $help_tabs = array();
+	public function add_help_tab( array $args ): void {
+		$this->help_tabs[] = $args;
+	}
 }
 
 class WP_Error {
@@ -126,7 +141,20 @@ function wp_verify_nonce( $n, $a ) { return PMH_Fake_WP::$nonce_ok; }
 function current_user_can( $cap, ...$args ) { return PMH_Fake_WP::$can_callback ? (bool) call_user_func( PMH_Fake_WP::$can_callback, $cap, $args ) : PMH_Fake_WP::$can; }
 function get_current_user_id() { return 1; }
 function wp_nonce_field( $a, $n ) { echo '<input type="hidden" name="' . $n . '" value="nonce">'; }
-function get_current_screen() { return null; }
+function get_current_screen() { return PMH_Fake_WP::$screen; }
+function admin_url( $path = '' ) { return 'https://example.test/wp-admin/' . ltrim( (string) $path, '/' ); }
+function wp_count_terms( $args = array() ) {
+	$n = 0;
+	foreach ( PMH_Fake_WP::$terms as $t ) {
+		if ( $t->taxonomy === ( $args['taxonomy'] ?? '' ) ) {
+			$n++;
+		}
+	}
+	return $n;
+}
+function wp_kses_post( $html ) {
+	return preg_replace( '#<(script|style|iframe)[^>]*>.*?</\1>#is', '', (string) $html );
+}
 
 /* ---- object cache / options ---- */
 function wp_cache_get( $key, $group = '' ) { PMH_Fake_WP::count( 'wp_cache_get' ); return PMH_Fake_WP::$object_cache[ $group ][ $key ] ?? false; }

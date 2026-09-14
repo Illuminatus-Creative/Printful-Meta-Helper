@@ -1,0 +1,148 @@
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class AdminHelpTest extends TestCase {
+
+	protected function setUp(): void {
+		PMH_Fake_WP::reset();
+	}
+
+	public function test_every_tip_key_used_in_code_exists(): void {
+		$used = array();
+		foreach ( glob( PMH_DIR . 'includes/*.php' ) as $file ) {
+			preg_match_all( "/PMH_Admin_Help::tip\\(\\s*'([a-z_]+)'\\s*\\)/", (string) file_get_contents( $file ), $m );
+			$used = array_merge( $used, $m[1] );
+			// Keys passed as the trailing $tip argument of PMH_Term_Meta::field().
+			if ( str_ends_with( $file, 'class-pmh-term-meta.php' ) ) {
+				preg_match_all( "/^\\s*'([a-z_]+)'\\s*\\n\\s*\\);/m", (string) file_get_contents( $file ), $m2 );
+				$used = array_merge( $used, $m2[1] );
+			}
+		}
+		$used   = array_unique( $used );
+		$known  = array_keys( PMH_Admin_Help::strings() );
+		$unknown = array_diff( $used, $known );
+		self::assertSame( array(), array_values( $unknown ), 'tip keys referenced in code but missing from strings()' );
+		self::assertGreaterThan( 15, count( $used ), 'the scan found the tips' );
+		$unused = array_diff( $known, $used );
+		self::assertSame( array(), array_values( $unused ), 'strings() entries no screen references' );
+	}
+
+	public function test_strings_are_utilitarian_length(): void {
+		foreach ( PMH_Admin_Help::strings() as $key => $text ) {
+			self::assertNotSame( '', trim( $text ), $key );
+			self::assertLessThanOrEqual( 420, strlen( $text ), "$key is too long for a tooltip" );
+			self::assertStringNotContainsString( '<', $text, "$key contains markup; tips are plain text" );
+		}
+	}
+
+	public function test_tip_fallback_is_escaped_and_focusable(): void {
+		$html = PMH_Admin_Help::tip( 'kind' );
+		self::assertStringStartsWith( '<span class="pmh-tip dashicons dashicons-editor-help" tabindex="0" role="img" title="', $html );
+		self::assertStringContainsString( 'aria-label="', $html );
+		self::assertStringContainsString( 'Apparel renders a size chart.', $html );
+		self::assertSame( '', PMH_Admin_Help::tip( 'no_such_key' ) );
+
+		$exc = PMH_Admin_Help::tip( 'material_exceptions' );
+		self::assertStringContainsString( '&quot;Sport Grey', $exc, 'double quotes inside the attribute are encoded' );
+	}
+
+	public function test_tabs_per_context(): void {
+		self::assertSame( array( 'about', 'data', 'shortcodes' ), array_column( PMH_Admin_Help::tabs( 'blank' ), 'id' ) );
+		self::assertSame( array( 'blank' ), array_column( PMH_Admin_Help::tabs( 'product' ), 'id' ) );
+		self::assertSame( array( 'groups-how', 'groups-run' ), array_column( PMH_Admin_Help::tabs( 'groups' ), 'id' ) );
+		self::assertSame( array(), PMH_Admin_Help::tabs( 'elsewhere' ) );
+
+		foreach ( array( 'blank', 'product', 'groups' ) as $context ) {
+			foreach ( PMH_Admin_Help::tabs( $context ) as $tab ) {
+				self::assertNotSame( '', $tab['title'] );
+				self::assertStringContainsString( '<p>', $tab['content'] );
+				self::assertSame( $tab['content'], wp_kses_post( $tab['content'] ), 'tab content is safe under kses' );
+			}
+		}
+		$shortcodes = PMH_Admin_Help::tabs( 'blank' )[2]['content'];
+		foreach ( array( '[pmh_size_chart]', '[pmh_materials]', '[pmh_blank_name]' ) as $sc ) {
+			self::assertStringContainsString( $sc, $shortcodes );
+		}
+	}
+
+	public function test_context_detection_and_registration(): void {
+		$cases = array(
+			array( array( 'taxonomy' => 'pmh_blank', 'base' => 'edit-tags', 'id' => 'edit-pmh_blank' ), 3 ),
+			array( array( 'taxonomy' => 'pmh_blank', 'base' => 'term', 'id' => 'edit-pmh_blank' ), 3 ),
+			array( array( 'post_type' => 'product', 'base' => 'post', 'id' => 'product' ), 1 ),
+			array( array( 'id' => 'product_page_pmh-blank-groups', 'base' => 'product_page_pmh-blank-groups' ), 2 ),
+			array( array( 'taxonomy' => 'product_cat', 'base' => 'edit-tags', 'id' => 'edit-product_cat' ), 0 ),
+			array( array( 'post_type' => 'product', 'base' => 'edit', 'id' => 'edit-product' ), 0 ),
+			array( array( 'post_type' => 'page', 'base' => 'post', 'id' => 'page' ), 0 ),
+		);
+		foreach ( $cases as [ $props, $expected ] ) {
+			$screen = new PMH_Fake_Screen();
+			foreach ( $props as $k => $v ) {
+				$screen->$k = $v;
+			}
+			PMH_Fake_WP::$screen = $screen;
+			PMH_Admin_Help::register_help_tabs();
+			self::assertCount( $expected, $screen->help_tabs, $screen->id );
+			foreach ( $screen->help_tabs as $tab ) {
+				self::assertStringStartsWith( 'pmh-', $tab['id'] );
+			}
+		}
+		PMH_Fake_WP::$screen = null;
+		PMH_Admin_Help::register_help_tabs(); // no screen: no error
+		self::assertTrue( true );
+	}
+
+	public function test_intro_points_to_blank_groups_only_when_empty(): void {
+		ob_start();
+		PMH_Admin_Help::render_intro();
+		$empty = ob_get_clean();
+		self::assertStringContainsString( 'No blanks yet.', $empty );
+		self::assertStringContainsString( 'page=pmh-blank-groups', $empty );
+
+		PMH_Fake_WP::add_term( 'pmh_blank', 'Gildan 5000' );
+		ob_start();
+		PMH_Admin_Help::render_intro();
+		$has = ob_get_clean();
+		self::assertStringNotContainsString( 'No blanks yet.', $has );
+		self::assertStringContainsString( 'A blank is the garment or item', $has );
+	}
+
+	public function test_shortcodes_box_lists_all_three(): void {
+		$html = PMH_Admin_Help::shortcodes_box();
+		foreach ( array( '[pmh_size_chart]', '[pmh_materials]', '[pmh_blank_name]' ) as $sc ) {
+			self::assertStringContainsString( '<code>' . $sc . '</code>', $html );
+		}
+	}
+
+	public function test_woocommerce_screen_ids_adds_ours_once(): void {
+		$ids = PMH_Admin_Help::woocommerce_screen_ids( array( 'product', 'edit-pmh_blank' ) );
+		self::assertSame( array( 'product', 'edit-pmh_blank', 'product_page_pmh-blank-groups' ), $ids );
+	}
+
+	public function test_blank_edit_form_carries_tips_descriptions_and_shortcodes(): void {
+		PMH_Fake_WP::add_term( 'product_cat', 'Tees', 5 );
+		$term = PMH_Fake_WP::add_term( 'pmh_blank', 'Gildan 5000' );
+		ob_start();
+		PMH_Term_Meta::render_edit_form( $term );
+		$html = ob_get_clean();
+
+		$tips = substr_count( $html, 'class="pmh-tip' );
+		self::assertGreaterThanOrEqual( 14, $tips, 'one tip per explained field' );
+		self::assertStringContainsString( '<code>[pmh_size_chart]</code>', $html );
+		// Every field row has a description except the shortcodes box.
+		$rows = substr_count( $html, '<tr class="form-field pmh-field' );
+		$desc = substr_count( $html, '<p class="description">' );
+		self::assertGreaterThanOrEqual( $rows, $desc );
+	}
+
+	public function test_product_metabox_carries_tips_and_manage_link(): void {
+		PMH_Fake_WP::add_post( 1 );
+		ob_start();
+		PMH_Product_Meta::render_metabox( (object) array( 'ID' => 1 ) );
+		$html = ob_get_clean();
+		self::assertSame( 3, substr_count( $html, 'class="pmh-tip' ) );
+		self::assertStringContainsString( 'edit-tags.php?taxonomy=pmh_blank&post_type=product', $html );
+		self::assertStringContainsString( 'Manage blanks', $html );
+	}
+}

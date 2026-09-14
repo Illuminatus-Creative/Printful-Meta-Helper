@@ -141,7 +141,7 @@ final class PMH_Taxonomy {
 		$current = isset( $_GET[ self::FILTER_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::FILTER_ARG ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		echo '<label class="screen-reader-text" for="pmh-blank-filter">' . esc_html__( 'Filter by blank', 'printful-meta-helper' ) . '</label>';
-		echo '<select name="' . esc_attr( self::FILTER_ARG ) . '" id="pmh-blank-filter">';
+		echo '<select name="' . esc_attr( self::FILTER_ARG ) . '" id="pmh-blank-filter" title="' . esc_attr__( 'Filter products by blank. "No blank assigned" finds products that still need one.', 'printful-meta-helper' ) . '">';
 		echo '<option value="">' . esc_html__( 'All blanks', 'printful-meta-helper' ) . '</option>';
 		echo '<option value="' . esc_attr( self::FILTER_NONE ) . '"' . selected( $current, self::FILTER_NONE, false ) . '>' . esc_html__( 'No blank assigned', 'printful-meta-helper' ) . '</option>';
 		foreach ( $terms as $term ) {

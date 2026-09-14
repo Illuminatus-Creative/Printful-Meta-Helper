@@ -30,7 +30,7 @@ final class PMH_Product_Meta {
 		echo '<div class="pmh-assign" id="pmh-assign">';
 		// Hidden 0 so choosing "No blank" clears the term (core's category box does the same).
 		echo '<input type="hidden" name="tax_input[' . esc_attr( PMH_TAXONOMY ) . '][]" value="0">';
-		echo '<label class="screen-reader-text" for="pmh_blank_select">' . esc_html__( 'Blank', 'printful-meta-helper' ) . '</label>';
+		echo '<p class="pmh-assign__label"><label for="pmh_blank_select">' . esc_html__( 'Blank', 'printful-meta-helper' ) . '</label> ' . PMH_Admin_Help::tip( 'product_select' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tip() escapes.
 		echo '<select name="tax_input[' . esc_attr( PMH_TAXONOMY ) . '][]" id="pmh_blank_select" class="widefat">';
 		echo '<option value="">' . esc_html__( '— No blank —', 'printful-meta-helper' ) . '</option>';
 		foreach ( $blanks as $blank ) {
@@ -45,11 +45,17 @@ final class PMH_Product_Meta {
 			);
 		}
 		echo '</select>';
-		echo '<p class="pmh-assign__showall"><label><input type="checkbox" id="pmh_show_all"> ' . esc_html__( 'Show all blanks', 'printful-meta-helper' ) . '</label></p>';
+		echo '<p class="pmh-assign__showall"><label><input type="checkbox" id="pmh_show_all"> ' . esc_html__( 'Show all blanks', 'printful-meta-helper' ) . '</label> ' . PMH_Admin_Help::tip( 'product_show_all' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tip() escapes.
+		echo '<p class="pmh-assign__previewlabel">' . esc_html__( 'Preview', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'product_preview' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tip() escapes.
 		echo '<div class="pmh-assign__preview" id="pmh_blank_preview" aria-live="polite"></div>';
 		if ( ! $blanks ) {
 			echo '<p class="description">' . esc_html__( 'No blanks exist yet. Create one under Products → Blanks.', 'printful-meta-helper' ) . '</p>';
 		}
+		printf(
+			'<p class="pmh-assign__manage"><a href="%s">%s</a></p>',
+			esc_url( admin_url( 'edit-tags.php?taxonomy=' . PMH_TAXONOMY . '&post_type=product' ) ),
+			esc_html__( 'Manage blanks', 'printful-meta-helper' )
+		);
 		echo '</div>';
 	}
 

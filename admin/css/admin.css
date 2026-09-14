@@ -169,3 +169,53 @@
 .pmh-groups__assign select {
 	max-width: 16em;
 }
+
+/* Help: intro, fallback tip, shortcodes reference */
+.pmh-intro {
+	max-width: 60em;
+	margin: 0 0 12px;
+	padding: 10px 14px;
+	background: #fff;
+	border-left: 4px solid #2271b1;
+}
+.pmh-intro p {
+	margin: 6px 0;
+}
+.pmh-tip {
+	color: #787c82;
+	cursor: help;
+	vertical-align: middle;
+}
+.pmh-tip:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+.taxonomy-pmh_blank .form-field label + .woocommerce-help-tip,
+.taxonomy-pmh_blank .form-field label + .pmh-tip {
+	margin-left: 4px;
+}
+.pmh-shortcodes {
+	border-collapse: collapse;
+}
+.pmh-shortcodes th,
+.pmh-shortcodes td {
+	padding: 4px 10px 4px 0;
+	vertical-align: top;
+	text-align: left;
+	font-weight: normal;
+}
+.pmh-shortcodes code {
+	white-space: nowrap;
+}
+.pmh-assign__label,
+.pmh-assign__previewlabel {
+	margin: 0 0 4px;
+	font-weight: 600;
+}
+.pmh-assign__previewlabel {
+	margin-top: 8px;
+}
+.pmh-assign__manage {
+	margin: 6px 0 0;
+	font-size: 12px;
+}

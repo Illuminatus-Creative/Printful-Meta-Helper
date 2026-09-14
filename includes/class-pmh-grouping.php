@@ -187,6 +187,7 @@ final class PMH_Grouping {
 			PMH_Notices::render( PMH_Notices::take( 'groups' ), false );
 		}
 
+		echo '<p class="description">' . esc_html__( 'The Help tab at the top right explains how grouping works and a recommended first run.', 'printful-meta-helper' ) . '</p>';
 		echo '<p>' . esc_html__( 'Products Printful has pushed carry their size chart. Products on the same garment carry the same chart, so they group together here. Assign each group to an existing blank or create one from its chart; the blank is created with the group’s chart, body chart and the union of the products’ categories, and stays fully editable.', 'printful-meta-helper' ) . '</p>';
 
 		printf(
@@ -212,13 +213,13 @@ final class PMH_Grouping {
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
 		wp_nonce_field( self::ACTION, self::NONCE );
 
-		echo '<p><label><input type="checkbox" name="skip_assigned" value="1" checked> ' . esc_html__( 'Leave products that already have a blank as they are', 'printful-meta-helper' ) . '</label></p>';
+		echo '<p><label><input type="checkbox" name="skip_assigned" value="1" checked> ' . esc_html__( 'Leave products that already have a blank as they are', 'printful-meta-helper' ) . '</label> ' . PMH_Admin_Help::tip( 'groups_skip' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tip() escapes.
 
 		echo '<table class="widefat striped pmh-groups__table"><thead><tr>';
-		echo '<th class="pmh-groups__apply">' . esc_html__( 'Apply', 'printful-meta-helper' ) . '</th>';
-		echo '<th>' . esc_html__( 'Chart', 'printful-meta-helper' ) . '</th>';
-		echo '<th>' . esc_html__( 'Products', 'printful-meta-helper' ) . '</th>';
-		echo '<th>' . esc_html__( 'Assign to', 'printful-meta-helper' ) . '</th>';
+		echo '<th class="pmh-groups__apply">' . esc_html__( 'Apply', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_apply' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '<th>' . esc_html__( 'Chart', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_chart' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '<th>' . esc_html__( 'Products', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_products' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '<th>' . esc_html__( 'Assign to', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_assign' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo '</tr></thead><tbody>';
 
 		$i = 0;

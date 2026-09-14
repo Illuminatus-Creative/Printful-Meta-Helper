@@ -39,6 +39,16 @@ Copy or clone this folder into `wp-content/plugins/` and activate. There is
 no update mechanism by design (`Update URI: false`). Bump `Version` in the
 plugin header by hand.
 
+## Help in the admin
+
+Every screen the plugin adds carries its own help: a "?" tip next to each
+control explaining what it does and why, a description under each field
+saying what happens on save, an intro above the add-blank form, and Help
+tabs (top right of the screen) covering the workflow, where the Printful
+data comes from, the shortcodes, and a recommended first run of Blank
+Groups. The strings live in one class, `PMH_Admin_Help`, and a test checks
+that every key referenced by a screen exists and every string is referenced.
+
 ## Assigning blanks
 
 Products → Blanks to create terms. On the product edit screen the Blank box

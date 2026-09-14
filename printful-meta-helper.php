@@ -53,6 +53,7 @@ add_action(
 		PMH_Taxonomy::init();
 		PMH_Term_Meta::init();
 		PMH_Admin_Assets::init();
+		PMH_Admin_Help::init();
 		PMH_Grouping::init();
 		PMH_Sizes::init();
 		PMH_Renderer::init();
