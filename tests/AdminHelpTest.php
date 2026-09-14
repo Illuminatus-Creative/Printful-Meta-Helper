@@ -13,25 +13,40 @@ final class AdminHelpTest extends TestCase {
 		foreach ( glob( PMH_DIR . 'includes/*.php' ) as $file ) {
 			preg_match_all( "/PMH_Admin_Help::tip\\(\\s*'([a-z_]+)'\\s*\\)/", (string) file_get_contents( $file ), $m );
 			$used = array_merge( $used, $m[1] );
-			// Keys passed as the trailing $tip argument of PMH_Term_Meta::field().
-			if ( str_ends_with( $file, 'class-pmh-term-meta.php' ) ) {
-				// Each field() statement whose last argument is a bare quoted key.
-				// Descriptions may contain semicolons, so cut at the closing ");".
-				preg_match_all( '/self::field\\((.*?)\\);/s', (string) file_get_contents( $file ), $calls );
-				foreach ( $calls[1] as $args ) {
-					if ( preg_match( "/,\\s*'([a-z_]+)'\\s*$/s", rtrim( $args ), $m3 ) ) {
-						$used[] = $m3[1];
-					}
-				}
+		}
+		// Blank Groups builds its header keys as 'groups_' . $key.
+		foreach ( array( 'apply', 'chart', 'products', 'assign' ) as $col ) {
+			$used[] = 'groups_' . $col;
+		}
+		// The blank screen declares its tips in the field list.
+		foreach ( PMH_Term_Meta::field_specs( PMH_Blank::defaults() ) as $spec ) {
+			if ( '' !== $spec['tip'] ) {
+				$used[] = $spec['tip'];
 			}
 		}
-		$used   = array_unique( $used );
-		$known  = array_keys( PMH_Admin_Help::strings() );
+
+		$used    = array_unique( $used );
+		$known   = array_keys( PMH_Admin_Help::strings() );
 		$unknown = array_diff( $used, $known );
 		self::assertSame( array(), array_values( $unknown ), 'tip keys referenced in code but missing from strings()' );
 		self::assertGreaterThan( 15, count( $used ), 'the scan found the tips' );
 		$unused = array_diff( $known, $used );
 		self::assertSame( array(), array_values( $unused ), 'strings() entries no screen references' );
+	}
+
+	public function test_field_specs_are_complete(): void {
+		$specs = PMH_Term_Meta::field_specs( PMH_Blank::defaults() );
+		$ids   = array_column( $specs, 'id' );
+		self::assertSame( $ids, array_unique( $ids ), 'field ids are unique' );
+		foreach ( $specs as $spec ) {
+			self::assertNotSame( '', $spec['label'], $spec['id'] );
+			self::assertNotSame( '', $spec['control'], $spec['id'] );
+			self::assertNotSame( '', $spec['section'], $spec['id'] );
+			if ( 'pmh_shortcodes' !== $spec['id'] ) {
+				self::assertNotSame( '', $spec['description'], $spec['id'] . ' has a description' );
+				self::assertNotSame( '', $spec['tip'], $spec['id'] . ' has a tip' );
+			}
+		}
 	}
 
 	public function test_strings_are_utilitarian_length(): void {
@@ -148,7 +163,7 @@ final class AdminHelpTest extends TestCase {
 		PMH_Product_Meta::render_metabox( (object) array( 'ID' => 1 ) );
 		$html = ob_get_clean();
 		self::assertSame( 3, substr_count( $html, 'class="pmh-tip' ) );
-		self::assertStringContainsString( 'edit-tags.php?taxonomy=pmh_blank&post_type=product', $html );
+		self::assertStringContainsString( 'edit-tags.php?taxonomy=pmh_blank&#038;post_type=product', $html );
 		self::assertStringContainsString( 'Manage blanks', $html );
 	}
 }

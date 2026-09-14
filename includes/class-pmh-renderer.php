@@ -91,21 +91,50 @@ final class PMH_Renderer {
 		$html  = '<div class="' . esc_attr( implode( ' ', array_unique( $classes ) ) ) . '" data-pmh-unit="' . esc_attr( $unit ) . '" data-pmh-blank="' . esc_attr( $blank->slug ) . '">';
 
 		if ( $opts['toggle'] ) {
-			$html .= '<div class="pmh-chart__toggle" role="group" aria-label="' . esc_attr__( 'Measurement units', 'printful-meta-helper' ) . '">';
-			$html .= sprintf(
-				'<button type="button" class="pmh-chart__unit" data-unit="in" aria-pressed="%s">%s</button>',
-				'in' === $unit ? 'true' : 'false',
-				esc_html__( 'Inches', 'printful-meta-helper' )
-			);
-			$html .= sprintf(
-				'<button type="button" class="pmh-chart__unit" data-unit="cm" aria-pressed="%s">%s</button>',
-				'cm' === $unit ? 'true' : 'false',
-				esc_html__( 'Centimeters', 'printful-meta-helper' )
-			);
-			$html .= '</div>';
+			$html .= self::toggle_html( $unit );
+		}
+		$html .= self::table_html( $chart, $suffix );
+
+		if ( $opts['note'] && '' !== $chart['note'] ) {
+			$html .= '<p class="pmh-chart__note">' . esc_html( $chart['note'] ) . '</p>';
 		}
 
-		$html .= '<div class="pmh-chart__scroll"><table class="pmh-chart__table">';
+		$html .= '</div>';
+
+		/**
+		 * Filter the finished size chart HTML.
+		 *
+		 * @param string  $html  Markup.
+		 * @param WP_Term $blank Blank.
+		 * @param array   $chart Filtered chart that was rendered.
+		 * @param array   $opts  Render options.
+		 */
+		return (string) apply_filters( 'pmh_size_chart_html', $html, $blank, $chart, $opts );
+	}
+
+	private static function toggle_html( string $unit ): string {
+		$html  = '<div class="pmh-chart__toggle" role="group" aria-label="' . esc_attr__( 'Measurement units', 'printful-meta-helper' ) . '">';
+		$html .= sprintf(
+			'<button type="button" class="pmh-chart__unit" data-unit="in" aria-pressed="%s">%s</button>',
+			'in' === $unit ? 'true' : 'false',
+			esc_html__( 'Inches', 'printful-meta-helper' )
+		);
+		$html .= sprintf(
+			'<button type="button" class="pmh-chart__unit" data-unit="cm" aria-pressed="%s">%s</button>',
+			'cm' === $unit ? 'true' : 'false',
+			esc_html__( 'Centimeters', 'printful-meta-helper' )
+		);
+		return $html . '</div>';
+	}
+
+	/**
+	 * One row per size, one column per measurement, both unit values in
+	 * every cell.
+	 *
+	 * @param array $suffix ['in' => '"', 'cm' => ''].
+	 */
+	private static function table_html( array $chart, array $suffix ): string {
+		$html  = '<div class="pmh-chart__scroll"><table class="pmh-chart__table">';
 		$html .= '<thead><tr><th scope="col" class="pmh-chart__head pmh-chart__head--size">' . esc_html__( 'Size', 'printful-meta-helper' ) . '</th>';
 		foreach ( $chart['rows'] as $row ) {
 			$html .= '<th scope="col" class="pmh-chart__head">' . esc_html( $row['label'] ) . '</th>';
@@ -128,23 +157,7 @@ final class PMH_Renderer {
 			}
 			$html .= '</tr>';
 		}
-		$html .= '</tbody></table></div>';
-
-		if ( $opts['note'] && '' !== $chart['note'] ) {
-			$html .= '<p class="pmh-chart__note">' . esc_html( $chart['note'] ) . '</p>';
-		}
-
-		$html .= '</div>';
-
-		/**
-		 * Filter the finished size chart HTML.
-		 *
-		 * @param string  $html  Markup.
-		 * @param WP_Term $blank Blank.
-		 * @param array   $chart Filtered chart that was rendered.
-		 * @param array   $opts  Render options.
-		 */
-		return (string) apply_filters( 'pmh_size_chart_html', $html, $blank, $chart, $opts );
+		return $html . '</tbody></table></div>';
 	}
 
 	/**

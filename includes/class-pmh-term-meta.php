@@ -37,105 +37,60 @@ final class PMH_Term_Meta {
 
 	private static function render_fields( string $mode, array $data ): void {
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
+		$section = null;
+		foreach ( self::field_specs( $data ) as $spec ) {
+			if ( $spec['section'] !== $section ) {
+				$section = $spec['section'];
+				self::heading( $mode, $section );
+			}
+			self::field( $mode, $spec['id'], $spec['label'], $spec['control'], $spec['description'], $spec['tip'] );
+		}
+	}
 
-		self::heading( $mode, __( 'Applies to', 'printful-meta-helper' ) );
-		self::field(
-			$mode,
-			'pmh_cats',
-			__( 'Product categories', 'printful-meta-helper' ),
-			self::categories_checklist( $data['cats'] ),
-			__( 'The product screen offers this blank for products in these categories. Leave all unticked to offer it everywhere.', 'printful-meta-helper' ),
-			'applies_to'
-		);
-		self::field(
-			$mode,
-			'pmh_kind',
-			__( 'Kind', 'printful-meta-helper' ),
-			self::kind_select( $data['kind'] ),
-			__( 'Only apparel renders a size chart; the other kinds render materials only.', 'printful-meta-helper' ),
-			'kind'
-		);
+	/**
+	 * Every field on the blank screen, in order, with its section heading,
+	 * control markup, description and PMH_Admin_Help tip key. Declarative so
+	 * the form, the help copy and the tests read the same list.
+	 *
+	 * @param array $data PMH_Blank::get() result (or defaults).
+	 * @return array<int, array{section: string, id: string, label: string, control: string, description: string, tip: string}>
+	 */
+	public static function field_specs( array $data ): array {
+		$applies   = __( 'Applies to', 'printful-meta-helper' );
+		$materials = __( 'Materials', 'printful-meta-helper' );
+		$chart     = __( 'Size chart', 'printful-meta-helper' );
+		$parked    = __( 'Parked', 'printful-meta-helper' );
 
-		self::heading( $mode, __( 'Materials', 'printful-meta-helper' ) );
-		self::field( $mode, 'pmh_material_solid', __( 'Base material', 'printful-meta-helper' ), self::text( 'pmh_material_solid', $data['material_solid'], '100% cotton' ), __( 'The standard fabric, as Printful lists it.', 'printful-meta-helper' ), 'material_base' );
-		self::field(
-			$mode,
-			'pmh_material_exceptions',
-			__( 'Colour exceptions', 'printful-meta-helper' ),
-			self::textarea( 'pmh_material_exceptions', $data['material_exceptions'], 3, "Sport Grey is 90% cotton, 10% polyester\nHeather colors are 50% cotton, 50% polyester" ),
-			__( 'Colourways whose fabric differs from the base, one per line.', 'printful-meta-helper' ),
-			'material_exceptions'
-		);
-		self::field( $mode, 'pmh_fabric_weight', __( 'Fabric weight', 'printful-meta-helper' ), self::text( 'pmh_fabric_weight', $data['fabric_weight'], '5.0–5.3 oz/yd² (170-180 g/m²)' ), __( 'Free text; ranges are kept as written.', 'printful-meta-helper' ), 'fabric_weight' );
-		self::field( $mode, 'pmh_construction', __( 'Construction', 'printful-meta-helper' ), self::textarea( 'pmh_construction', $data['construction'], 4, "Tubular fabric\nTaped neck and shoulders" ), __( 'One feature per line.', 'printful-meta-helper' ), 'construction' );
-		self::field( $mode, 'pmh_care', __( 'Care', 'printful-meta-helper' ), self::textarea( 'pmh_care', $data['care'], 3 ), __( 'One instruction per line. Optional.', 'printful-meta-helper' ), 'care' );
-		self::field(
-			$mode,
-			'pmh_materials_paste',
-			__( 'Paste from Printful', 'printful-meta-helper' ),
-			self::textarea( 'pmh_materials_paste', '', 5, "• 100% cotton\n• Sport Grey is 90% cotton, 10% polyester\n• Fabric weight: 5.0–5.3 oz/yd²\n• Tubular fabric" ),
-			__( 'Paste the bulleted materials paragraph from Printful. On save it is split into the fields above, replacing them. Leave empty to keep the fields as they are.', 'printful-meta-helper' ),
-			'materials_paste'
-		);
+		$spec = static fn( string $section, string $id, string $label, string $control, string $description = '', string $tip = '' ): array => compact( 'section', 'id', 'label', 'control', 'description', 'tip' );
 
-		self::heading( $mode, __( 'Size chart', 'printful-meta-helper' ) );
-		self::field(
-			$mode,
-			'pmh_import_json',
-			__( 'Import Printful JSON', 'printful-meta-helper' ),
-			self::textarea( 'pmh_import_json', '', 6, '{"availableSizes":["S","M"],"productMeasurements":{...},"modelMeasurements":{...}}' ),
-			__( 'Paste the size-guide JSON. On save, the garment chart and body chart below are replaced with its inch rows. Leave empty to keep them.', 'printful-meta-helper' ),
-			'import_json'
-		);
-		self::field(
-			$mode,
-			'pmh_import_product',
-			__( 'Import from product', 'printful-meta-helper' ),
-			self::text( 'pmh_import_product', '', '123 or SKU' ),
-			__( 'Product ID or SKU. On save, the size-guide JSON Printful stored on that product replaces the charts below. Ignored if JSON is pasted above.', 'printful-meta-helper' ),
-			'import_product'
-		);
-		self::field(
-			$mode,
-			'pmh_import_text',
-			__( 'Import pasted table', 'printful-meta-helper' ),
-			self::textarea( 'pmh_import_text', '', 6, "Size Label\tLength\tWidth\nS\t28\t18\nM\t29\t20" )
-			. '<p><label><input type="radio" name="pmh_import_text_unit" value="in" checked> ' . esc_html__( 'Values are inches', 'printful-meta-helper' ) . '</label> &nbsp; <label><input type="radio" name="pmh_import_text_unit" value="cm"> ' . esc_html__( 'Values are centimetres', 'printful-meta-helper' ) . '</label></p>',
-			__( 'Copy the table from the Printful product page, header row included. On save it replaces the garment chart. Ignored if JSON or a product is given above.', 'printful-meta-helper' ),
-			'import_text'
-		);
-		self::field(
-			$mode,
-			'pmh_chart',
-			__( 'Garment chart (inches)', 'printful-meta-helper' ),
-			self::textarea( 'pmh_chart', self::chart_json( $data['chart'] ), 12, '', 'code pmh-chart-json' ),
-			__( 'Measurements of the garment laid flat, rendered by [pmh_size_chart]. Columns are sizes, rows are measurements; a cell takes 28, 34-37 or 16 ½. Inches only; centimetres are computed. "Edit as JSON" shows the stored structure.', 'printful-meta-helper' ),
-			'chart'
-		);
-		self::field(
-			$mode,
-			'pmh_body_chart',
-			__( 'Body chart (inches)', 'printful-meta-helper' ),
-			self::textarea( 'pmh_body_chart', self::chart_json( $data['body_chart'] ), 8, '', 'code pmh-chart-json' ),
-			__( 'Body measurements ("measure yourself"). Stored separately; rendered only when a shortcode asks for it.', 'printful-meta-helper' ),
-			'body_chart'
-		);
-		self::field(
-			$mode,
-			'pmh_shortcodes',
-			__( 'Shortcodes', 'printful-meta-helper' ),
-			PMH_Admin_Help::shortcodes_box()
-		);
+		return array(
+			$spec( $applies, 'pmh_cats', __( 'Product categories', 'printful-meta-helper' ), self::categories_checklist( $data['cats'] ), __( 'The product screen offers this blank for products in these categories. Leave all unticked to offer it everywhere.', 'printful-meta-helper' ), 'applies_to' ),
+			$spec( $applies, 'pmh_kind', __( 'Kind', 'printful-meta-helper' ), self::kind_select( $data['kind'] ), __( 'Only apparel renders a size chart; the other kinds render materials only.', 'printful-meta-helper' ), 'kind' ),
 
-		self::heading( $mode, __( 'Parked', 'printful-meta-helper' ) );
-		self::field(
-			$mode,
-			'pmh_handling',
-			__( 'Handling time (days)', 'printful-meta-helper' ),
-			'<input type="number" min="0" step="1" name="pmh_handling_min" id="pmh_handling_min" value="' . esc_attr( $data['handling_min'] ) . '" class="small-text"> – <input type="number" min="0" step="1" name="pmh_handling_max" id="pmh_handling_max" value="' . esc_attr( $data['handling_max'] ) . '" class="small-text">',
-			__( 'Reserved for later feed work. Leave empty.', 'printful-meta-helper' ),
-			'handling'
+			$spec( $materials, 'pmh_material_solid', __( 'Base material', 'printful-meta-helper' ), self::text( 'pmh_material_solid', $data['material_solid'], '100% cotton' ), __( 'The standard fabric, as Printful lists it.', 'printful-meta-helper' ), 'material_base' ),
+			$spec( $materials, 'pmh_material_exceptions', __( 'Colour exceptions', 'printful-meta-helper' ), self::textarea( 'pmh_material_exceptions', $data['material_exceptions'], 3, "Sport Grey is 90% cotton, 10% polyester\nHeather colors are 50% cotton, 50% polyester" ), __( 'Colourways whose fabric differs from the base, one per line.', 'printful-meta-helper' ), 'material_exceptions' ),
+			$spec( $materials, 'pmh_fabric_weight', __( 'Fabric weight', 'printful-meta-helper' ), self::text( 'pmh_fabric_weight', $data['fabric_weight'], '5.0–5.3 oz/yd² (170-180 g/m²)' ), __( 'Free text; ranges are kept as written.', 'printful-meta-helper' ), 'fabric_weight' ),
+			$spec( $materials, 'pmh_construction', __( 'Construction', 'printful-meta-helper' ), self::textarea( 'pmh_construction', $data['construction'], 4, "Tubular fabric\nTaped neck and shoulders" ), __( 'One feature per line.', 'printful-meta-helper' ), 'construction' ),
+			$spec( $materials, 'pmh_care', __( 'Care', 'printful-meta-helper' ), self::textarea( 'pmh_care', $data['care'], 3 ), __( 'One instruction per line. Optional.', 'printful-meta-helper' ), 'care' ),
+			$spec( $materials, 'pmh_materials_paste', __( 'Paste from Printful', 'printful-meta-helper' ), self::textarea( 'pmh_materials_paste', '', 5, "• 100% cotton\n• Sport Grey is 90% cotton, 10% polyester\n• Fabric weight: 5.0–5.3 oz/yd²\n• Tubular fabric" ), __( 'Paste the bulleted materials paragraph from Printful. On save it is split into the fields above, replacing them. Leave empty to keep the fields as they are.', 'printful-meta-helper' ), 'materials_paste' ),
+
+			$spec( $chart, 'pmh_import_json', __( 'Import Printful JSON', 'printful-meta-helper' ), self::textarea( 'pmh_import_json', '', 6, '{"availableSizes":["S","M"],"productMeasurements":{...},"modelMeasurements":{...}}' ), __( 'Paste the size-guide JSON. On save, the garment chart and body chart below are replaced with its inch rows. Leave empty to keep them.', 'printful-meta-helper' ), 'import_json' ),
+			$spec( $chart, 'pmh_import_product', __( 'Import from product', 'printful-meta-helper' ), self::text( 'pmh_import_product', '', '123 or SKU' ), __( 'Product ID or SKU. On save, the size-guide JSON Printful stored on that product replaces the charts below. Ignored if JSON is pasted above.', 'printful-meta-helper' ), 'import_product' ),
+			$spec( $chart, 'pmh_import_text', __( 'Import pasted table', 'printful-meta-helper' ), self::textarea( 'pmh_import_text', '', 6, "Size Label\tLength\tWidth\nS\t28\t18\nM\t29\t20" ) . self::unit_radios(), __( 'Copy the table from the Printful product page, header row included. On save it replaces the garment chart. Ignored if JSON or a product is given above.', 'printful-meta-helper' ), 'import_text' ),
+			$spec( $chart, 'pmh_chart', __( 'Garment chart (inches)', 'printful-meta-helper' ), self::textarea( 'pmh_chart', self::chart_json( $data['chart'] ), 12, '', 'code pmh-chart-json' ), __( 'Measurements of the garment laid flat, rendered by [pmh_size_chart]. Columns are sizes, rows are measurements; a cell takes 28, 34-37 or 16 ½. Inches only; centimetres are computed. "Edit as JSON" shows the stored structure.', 'printful-meta-helper' ), 'chart' ),
+			$spec( $chart, 'pmh_body_chart', __( 'Body chart (inches)', 'printful-meta-helper' ), self::textarea( 'pmh_body_chart', self::chart_json( $data['body_chart'] ), 8, '', 'code pmh-chart-json' ), __( 'Body measurements ("measure yourself"). Stored separately; rendered only when a shortcode asks for it.', 'printful-meta-helper' ), 'body_chart' ),
+			$spec( $chart, 'pmh_shortcodes', __( 'Shortcodes', 'printful-meta-helper' ), PMH_Admin_Help::shortcodes_box() ),
+
+			$spec( $parked, 'pmh_handling', __( 'Handling time (days)', 'printful-meta-helper' ), self::handling_inputs( $data ), __( 'Reserved for later feed work. Leave empty.', 'printful-meta-helper' ), 'handling' ),
 		);
+	}
+
+	private static function unit_radios(): string {
+		return '<p><label><input type="radio" name="pmh_import_text_unit" value="in" checked> ' . esc_html__( 'Values are inches', 'printful-meta-helper' ) . '</label> &nbsp; <label><input type="radio" name="pmh_import_text_unit" value="cm"> ' . esc_html__( 'Values are centimetres', 'printful-meta-helper' ) . '</label></p>';
+	}
+
+	private static function handling_inputs( array $data ): string {
+		return '<input type="number" min="0" step="1" name="pmh_handling_min" id="pmh_handling_min" value="' . esc_attr( $data['handling_min'] ) . '" class="small-text"> – <input type="number" min="0" step="1" name="pmh_handling_max" id="pmh_handling_max" value="' . esc_attr( $data['handling_max'] ) . '" class="small-text">';
 	}
 
 	private static function heading( string $mode, string $text ): void {

@@ -189,16 +189,10 @@ final class PMH_Sizes {
 	}
 
 	/**
-	 * Variation meta stores a term slug for taxonomy attributes; turn it back
-	 * into the term name ("2xl" -> "2XL"). Custom attributes store the text.
-	 */
-	public static function resolve_value( string $attribute, string $raw ): string {
-		return self::resolve_values( $attribute, array( $raw ) )[0] ?? $raw;
-	}
-
-	/**
-	 * Resolve many raw values with a single term query, preserving order.
-	 * Values with no matching term come back unchanged.
+	 * Variation meta stores a term slug for taxonomy attributes; turn the
+	 * distinct slugs back into names ("2xl" -> "2XL") with one term query,
+	 * preserving order. Values with no matching term, and custom (non-
+	 * taxonomy) attributes, come back unchanged.
 	 *
 	 * @param string[] $raws Distinct raw meta values.
 	 * @return string[]

@@ -17,6 +17,10 @@ final class PMH_Fake_WP {
 	public static array $options      = array();
 	/** @var PMH_Fake_Screen|null returned by get_current_screen() */
 	public static $screen             = null;
+	public static array $enqueued     = array(); // handles passed to wp_enqueue_*
+	public static array $inline       = array(); // handle => inline script
+	public static bool $is_admin      = false;
+	public static array $query_vars   = array(); // $_GET for the list-table tests
 	public static array $set_calls    = array(); // wp_set_object_terms() log
 	public static bool $can           = true;
 	/** @var callable|null fn( string $cap, array $args ): bool — overrides $can when set. */
@@ -41,6 +45,10 @@ final class PMH_Fake_WP {
 		self::$object_cache = array();
 		self::$options      = array();
 		self::$screen       = null;
+		self::$enqueued     = array();
+		self::$inline       = array();
+		self::$is_admin     = false;
+		$_GET               = array();
 		PMH_Fake_Cache_Helper::$prefixes = array();
 		self::$set_calls    = array();
 		self::$can          = true;
@@ -112,7 +120,7 @@ function is_wp_error( $thing ): bool {
 function esc_html( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8', false ); }
 function esc_attr( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8', false ); }
 function esc_textarea( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8' ); }
-function esc_url( $t ) { return (string) $t; }
+function esc_url( $t ) { return str_replace( '&', '&#038;', (string) $t ); }
 function esc_html__( $t, $d = null ) { return esc_html( $t ); }
 function esc_attr__( $t, $d = null ) { return esc_attr( $t ); }
 function __( $t, $d = null ) { return $t; }
@@ -142,6 +150,20 @@ function current_user_can( $cap, ...$args ) { return PMH_Fake_WP::$can_callback 
 function get_current_user_id() { return 1; }
 function wp_nonce_field( $a, $n ) { echo '<input type="hidden" name="' . $n . '" value="nonce">'; }
 function get_current_screen() { return PMH_Fake_WP::$screen; }
+function is_admin() { return PMH_Fake_WP::$is_admin; }
+function submit_button( $text = '' ) { echo '<p class="submit"><button type="submit" class="button button-primary">' . esc_html( $text ) . '</button></p>'; }
+function get_edit_post_link( $id ) { return 'https://example.test/wp-admin/post.php?post=' . (int) $id . '&action=edit'; }
+function wp_die( $msg = '' ) { throw new RuntimeException( 'wp_die: ' . $msg ); }
+function wp_add_inline_script( $handle, $code, $pos = 'after' ) { PMH_Fake_WP::$inline[ $handle ] = $code; return true; }
+
+/** Enough of WP_Query for pre_get_posts handlers. */
+final class PMH_Fake_Query {
+	public array $vars = array();
+	public bool $main = true;
+	public function get( $k, $default = '' ) { return $this->vars[ $k ] ?? $default; }
+	public function set( $k, $v ) { $this->vars[ $k ] = $v; }
+	public function is_main_query() { return $this->main; }
+}
 function admin_url( $path = '' ) { return 'https://example.test/wp-admin/' . ltrim( (string) $path, '/' ); }
 function wp_count_terms( $args = array() ) {
 	$n = 0;

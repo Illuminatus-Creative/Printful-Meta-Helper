@@ -187,9 +187,35 @@ final class PMH_Grouping {
 			PMH_Notices::render( PMH_Notices::take( 'groups' ), false );
 		}
 
+		self::render_summary( $scan );
+
+		if ( $scan['groups'] ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
+			wp_nonce_field( self::ACTION, self::NONCE );
+			echo '<p><label><input type="checkbox" name="skip_assigned" value="1" checked> ' . esc_html__( 'Leave products that already have a blank as they are', 'printful-meta-helper' ) . '</label> ' . PMH_Admin_Help::tip( 'groups_skip' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tip() escapes.
+
+			echo '<table class="widefat striped pmh-groups__table"><thead><tr>';
+			foreach ( array( 'apply' => __( 'Apply', 'printful-meta-helper' ), 'chart' => __( 'Chart', 'printful-meta-helper' ), 'products' => __( 'Products', 'printful-meta-helper' ), 'assign' => __( 'Assign to', 'printful-meta-helper' ) ) as $key => $label ) {
+				echo '<th class="pmh-groups__' . esc_attr( $key ) . '">' . esc_html( $label ) . ' ' . PMH_Admin_Help::tip( 'groups_' . $key ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tip() escapes.
+			}
+			echo '</tr></thead><tbody>';
+			$i = 0;
+			foreach ( $scan['groups'] as $signature => $group ) {
+				self::render_group_row( $i++, (string) $signature, $group, $blanks, $by_id );
+			}
+			echo '</tbody></table>';
+			submit_button( __( 'Apply to ticked groups', 'printful-meta-helper' ) );
+			echo '</form>';
+		}
+
+		self::render_unreadable( $scan['unreadable'] );
+		echo '</div>';
+	}
+
+	private static function render_summary( array $scan ): void {
 		echo '<p class="description">' . esc_html__( 'The Help tab at the top right explains how grouping works and a recommended first run.', 'printful-meta-helper' ) . '</p>';
 		echo '<p>' . esc_html__( 'Products Printful has pushed carry their size chart. Products on the same garment carry the same chart, so they group together here. Assign each group to an existing blank or create one from its chart; the blank is created with the group’s chart, body chart and the union of the products’ categories, and stays fully editable.', 'printful-meta-helper' ) . '</p>';
-
 		printf(
 			'<p class="pmh-groups__summary">%s</p>',
 			esc_html(
@@ -203,112 +229,108 @@ final class PMH_Grouping {
 				)
 			)
 		);
+	}
 
-		if ( ! $scan['groups'] ) {
-			echo '</div>';
+	/**
+	 * @param WP_Term[]           $blanks All blanks, by name.
+	 * @param array<int, WP_Term> $by_id  The same, keyed by ID.
+	 */
+	private static function render_group_row( int $i, string $signature, array $group, array $blanks, array $by_id ): void {
+		$name     = 'groups[' . $i . ']';
+		$match_id = (int) ( $group['blank_matches'][0] ?? 0 );
+
+		echo '<tr>';
+		echo '<td class="pmh-groups__apply"><input type="checkbox" name="' . esc_attr( $name . '[apply]' ) . '" value="1"' . ( $match_id ? ' checked' : '' ) . '>';
+		echo '<input type="hidden" name="' . esc_attr( $name . '[signature]' ) . '" value="' . esc_attr( $signature ) . '"></td>';
+		echo '<td class="pmh-groups__chart">' . self::chart_summary( $group['chart'] ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped inside.
+		echo '<td class="pmh-groups__products">' . self::product_list( $group['products'], $by_id ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped inside.
+		echo '<td class="pmh-groups__assign">' . self::assign_controls( $name, $match_id, $group['blank_matches'], $blanks ) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped inside.
+		echo '</tr>';
+	}
+
+	private static function chart_summary( array $chart ): string {
+		$html  = '<strong>' . esc_html( implode( ' · ', array_column( $chart['rows'], 'label' ) ) ) . '</strong><br>';
+		$html .= '<span class="description">' . esc_html( implode( ', ', $chart['sizes'] ) ) . '</span>';
+		$first = $chart['rows'][0] ?? null;
+		if ( $first ) {
+			$sample = array();
+			foreach ( array_slice( $chart['sizes'], 0, 3 ) as $size ) {
+				if ( isset( $first['values'][ $size ] ) ) {
+					$sample[] = $size . ' ' . PMH_Size_Chart::format_values( $first['values'][ $size ] ) . '"';
+				}
+			}
+			$html .= '<br><span class="description">' . esc_html( $first['label'] . ': ' . implode( ', ', $sample ) . ' …' ) . '</span>';
+		}
+		return $html;
+	}
+
+	/**
+	 * @param array<int, array>   $products id => [title, blank_id, cats].
+	 * @param array<int, WP_Term> $by_id    Blanks keyed by ID.
+	 */
+	private static function product_list( array $products, array $by_id ): string {
+		$assigned = count( array_filter( $products, static fn( $p ) => $p['blank_id'] > 0 ) );
+		$html     = sprintf(
+			'<details><summary>%s</summary><ul>',
+			esc_html(
+				sprintf(
+					/* translators: 1: product count, 2: already-assigned count */
+					__( '%1$d products (%2$d already have a blank)', 'printful-meta-helper' ),
+					count( $products ),
+					$assigned
+				)
+			)
+		);
+		foreach ( $products as $pid => $p ) {
+			$blank_name = $p['blank_id'] && isset( $by_id[ $p['blank_id'] ] ) ? $by_id[ $p['blank_id'] ]->name : '';
+			$html      .= sprintf(
+				'<li><a href="%1$s">%2$s</a>%3$s</li>',
+				esc_url( get_edit_post_link( $pid ) ),
+				esc_html( $p['title'] ?: '#' . $pid ),
+				$blank_name ? ' <span class="description">— ' . esc_html( $blank_name ) . '</span>' : ''
+			);
+		}
+		return $html . '</ul></details>';
+	}
+
+	/**
+	 * @param int[]     $matches Blank IDs whose chart matches the group.
+	 * @param WP_Term[] $blanks  All blanks.
+	 */
+	private static function assign_controls( string $name, int $match_id, array $matches, array $blanks ): string {
+		$use_existing = $match_id > 0; // no blanks at all => 0 => "new" is the default
+
+		$html  = '<label><input type="radio" name="' . esc_attr( $name . '[mode]' ) . '" value="existing"' . ( $use_existing ? ' checked' : '' ) . ( $blanks ? '' : ' disabled' ) . '> ' . esc_html__( 'Existing blank', 'printful-meta-helper' ) . '</label> ';
+		$html .= '<select name="' . esc_attr( $name . '[existing]' ) . '"' . ( $blanks ? '' : ' disabled' ) . '>';
+		$html .= '<option value="">' . esc_html__( '— choose —', 'printful-meta-helper' ) . '</option>';
+		foreach ( $blanks as $b ) {
+			$html .= sprintf(
+				'<option value="%1$d"%2$s>%3$s%4$s</option>',
+				(int) $b->term_id,
+				selected( $match_id, (int) $b->term_id, false ),
+				esc_html( $b->name ),
+				in_array( (int) $b->term_id, $matches, true ) ? ' ✓' : ''
+			);
+		}
+		$html .= '</select><br>';
+		$html .= '<label><input type="radio" name="' . esc_attr( $name . '[mode]' ) . '" value="new"' . ( $use_existing ? '' : ' checked' ) . '> ' . esc_html__( 'New blank named', 'printful-meta-helper' ) . '</label> ';
+		$html .= '<input type="text" name="' . esc_attr( $name . '[name]' ) . '" class="regular-text" placeholder="' . esc_attr__( 'Gildan 5000', 'printful-meta-helper' ) . '">';
+		if ( $match_id ) {
+			$html .= '<p class="description">' . esc_html__( 'A blank with an identical chart exists and is preselected.', 'printful-meta-helper' ) . '</p>';
+		}
+		return $html;
+	}
+
+	/** @param int[] $ids */
+	private static function render_unreadable( array $ids ): void {
+		if ( ! $ids ) {
 			return;
 		}
-
-		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
-		wp_nonce_field( self::ACTION, self::NONCE );
-
-		echo '<p><label><input type="checkbox" name="skip_assigned" value="1" checked> ' . esc_html__( 'Leave products that already have a blank as they are', 'printful-meta-helper' ) . '</label> ' . PMH_Admin_Help::tip( 'groups_skip' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tip() escapes.
-
-		echo '<table class="widefat striped pmh-groups__table"><thead><tr>';
-		echo '<th class="pmh-groups__apply">' . esc_html__( 'Apply', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_apply' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo '<th>' . esc_html__( 'Chart', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_chart' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo '<th>' . esc_html__( 'Products', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_products' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo '<th>' . esc_html__( 'Assign to', 'printful-meta-helper' ) . ' ' . PMH_Admin_Help::tip( 'groups_assign' ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo '</tr></thead><tbody>';
-
-		$i = 0;
-		foreach ( $scan['groups'] as $signature => $group ) {
-			$name     = 'groups[' . $i . ']';
-			$assigned = count( array_filter( $group['products'], static fn( $p ) => $p['blank_id'] > 0 ) );
-			$match_id = $group['blank_matches'][0] ?? 0;
-
-			echo '<tr>';
-			echo '<td class="pmh-groups__apply"><input type="checkbox" name="' . esc_attr( $name . '[apply]' ) . '" value="1"' . ( $match_id ? ' checked' : '' ) . '>';
-			echo '<input type="hidden" name="' . esc_attr( $name . '[signature]' ) . '" value="' . esc_attr( $signature ) . '"></td>';
-
-			echo '<td class="pmh-groups__chart">';
-			echo '<strong>' . esc_html( implode( ' · ', array_column( $group['chart']['rows'], 'label' ) ) ) . '</strong><br>';
-			echo '<span class="description">' . esc_html( implode( ', ', $group['chart']['sizes'] ) ) . '</span><br>';
-			$first = $group['chart']['rows'][0] ?? null;
-			if ( $first ) {
-				$sample = array();
-				foreach ( array_slice( $group['chart']['sizes'], 0, 3 ) as $size ) {
-					if ( isset( $first['values'][ $size ] ) ) {
-						$sample[] = $size . ' ' . PMH_Size_Chart::format_values( $first['values'][ $size ] ) . '"';
-					}
-				}
-				echo '<span class="description">' . esc_html( $first['label'] . ': ' . implode( ', ', $sample ) . ' …' ) . '</span>';
-			}
-			echo '</td>';
-
-			echo '<td class="pmh-groups__products">';
-			printf(
-				'<details><summary>%s</summary><ul>',
-				esc_html(
-					sprintf(
-						/* translators: 1: product count, 2: already-assigned count */
-						__( '%1$d products (%2$d already have a blank)', 'printful-meta-helper' ),
-						count( $group['products'] ),
-						$assigned
-					)
-				)
-			);
-			foreach ( $group['products'] as $pid => $p ) {
-				$blank_name = $p['blank_id'] && isset( $by_id[ $p['blank_id'] ] ) ? $by_id[ $p['blank_id'] ]->name : '';
-				printf(
-					'<li><a href="%1$s">%2$s</a>%3$s</li>',
-					esc_url( get_edit_post_link( $pid ) ),
-					esc_html( $p['title'] ?: '#' . $pid ),
-					$blank_name ? ' <span class="description">— ' . esc_html( $blank_name ) . '</span>' : ''
-				);
-			}
-			echo '</ul></details></td>';
-
-			$use_existing = $match_id > 0; // no blanks at all => 0 => "new" is the default
-
-			echo '<td class="pmh-groups__assign">';
-			echo '<label><input type="radio" name="' . esc_attr( $name . '[mode]' ) . '" value="existing"' . ( $use_existing ? ' checked' : '' ) . ( $blanks ? '' : ' disabled' ) . '> ' . esc_html__( 'Existing blank', 'printful-meta-helper' ) . '</label> ';
-			echo '<select name="' . esc_attr( $name . '[existing]' ) . '"' . ( $blanks ? '' : ' disabled' ) . '>';
-			echo '<option value="">' . esc_html__( '— choose —', 'printful-meta-helper' ) . '</option>';
-			foreach ( $blanks as $b ) {
-				$is_match = in_array( (int) $b->term_id, $group['blank_matches'], true );
-				printf(
-					'<option value="%1$d"%2$s>%3$s%4$s</option>',
-					(int) $b->term_id,
-					selected( $match_id, (int) $b->term_id, false ),
-					esc_html( $b->name ),
-					$is_match ? ' ✓' : ''
-				);
-			}
-			echo '</select><br>';
-			echo '<label><input type="radio" name="' . esc_attr( $name . '[mode]' ) . '" value="new"' . ( $use_existing ? '' : ' checked' ) . '> ' . esc_html__( 'New blank named', 'printful-meta-helper' ) . '</label> ';
-			echo '<input type="text" name="' . esc_attr( $name . '[name]' ) . '" class="regular-text" placeholder="' . esc_attr__( 'Gildan 5000', 'printful-meta-helper' ) . '">';
-			if ( $match_id ) {
-				echo '<p class="description">' . esc_html__( 'A blank with an identical chart exists and is preselected.', 'printful-meta-helper' ) . '</p>';
-			}
-			echo '</td></tr>';
-			$i++;
+		echo '<h2>' . esc_html__( 'Unreadable charts', 'printful-meta-helper' ) . '</h2><ul>';
+		foreach ( $ids as $pid ) {
+			printf( '<li><a href="%1$s">%2$s</a></li>', esc_url( get_edit_post_link( $pid ) ), esc_html( get_the_title( $pid ) ?: '#' . $pid ) );
 		}
-
-		echo '</tbody></table>';
-		submit_button( __( 'Apply to ticked groups', 'printful-meta-helper' ) );
-		echo '</form>';
-
-		if ( $scan['unreadable'] ) {
-			echo '<h2>' . esc_html__( 'Unreadable charts', 'printful-meta-helper' ) . '</h2><ul>';
-			foreach ( $scan['unreadable'] as $pid ) {
-				printf( '<li><a href="%1$s">%2$s</a></li>', esc_url( get_edit_post_link( $pid ) ), esc_html( get_the_title( $pid ) ?: '#' . $pid ) );
-			}
-			echo '</ul>';
-		}
-
-		echo '</div>';
+		echo '</ul>';
 	}
 
 	/* ------------------------------------------------------------------ */

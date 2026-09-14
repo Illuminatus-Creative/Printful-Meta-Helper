@@ -68,6 +68,6 @@ function is_singular( $t = '' ) { return false; }
 function has_term() { return false; }
 function wp_register_style() {}
 function wp_register_script() {}
-function wp_enqueue_style() {}
-function wp_enqueue_script() {}
+function wp_enqueue_style( $handle = '' ) { PMH_Fake_WP::$enqueued[] = $handle; }
+function wp_enqueue_script( $handle = '' ) { PMH_Fake_WP::$enqueued[] = $handle; }
 function get_queried_object_id() { return 1; }

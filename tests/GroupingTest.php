@@ -166,4 +166,55 @@ final class GroupingTest extends TestCase {
 		self::assertSame( $n, PMH_Fake_WP::$calls['get_post_meta_hit'] );
 		self::assertArrayNotHasKey( 'get_post_meta_miss', PMH_Fake_WP::$calls );
 	}
+
+	public function test_render_page_lists_groups_with_matches_preselected(): void {
+		$sig   = $this->seed_two_products_in_one_group();
+		$blank = PMH_Fake_WP::add_term( 'pmh_blank', 'Gildan 5000' );
+		PMH_Blank::update( $blank->term_id, array( 'chart' => pmh_test_chart() ) );
+		PMH_Fake_WP::add_post( 3 ); // legacy, no meta
+		PMH_Fake_WP::add_post( 4 );
+		PMH_Fake_WP::$post_meta[4][ PMH_Importer::PRODUCT_META_KEY ] = 'not json';
+		wp_set_object_terms( 1, array( $blank->term_id ), 'pmh_blank' );
+
+		ob_start();
+		PMH_Grouping::render_page();
+		$html = ob_get_clean();
+
+		self::assertStringContainsString( '1 groups across 2 products. 1 products have no Printful chart', $html );
+		self::assertStringContainsString( '1 products have a chart that could not be read', $html );
+		self::assertStringContainsString( 'name="groups[0][signature]" value="' . $sig . '"', $html );
+		self::assertStringContainsString( 'name="groups[0][apply]" value="1" checked', $html, 'matching blank => ticked' );
+		self::assertStringContainsString( 'value="' . $blank->term_id . '" selected="selected">Gildan 5000 ✓', $html );
+		self::assertStringContainsString( 'value="existing" checked', $html );
+		self::assertStringContainsString( '2 products (1 already have a blank)', $html );
+		self::assertStringContainsString( '— Gildan 5000</span>', $html, 'assigned product shows its blank' );
+		self::assertStringContainsString( 'Length · Width · Sleeve length', $html );
+		self::assertStringContainsString( '<h2>Unreadable charts</h2>', $html );
+		self::assertStringContainsString( 'post=4&#038;action=edit', $html );
+		self::assertSame( 5, substr_count( $html, 'class="pmh-tip' ), 'skip option plus four headers' );
+	}
+
+	public function test_render_page_with_no_blanks_defaults_to_new(): void {
+		$this->seed_two_products_in_one_group();
+		ob_start();
+		PMH_Grouping::render_page();
+		$html = ob_get_clean();
+		self::assertStringContainsString( 'value="existing" disabled', $html );
+		self::assertStringContainsString( 'value="new" checked', $html );
+		self::assertStringNotContainsString( 'value="existing" checked', $html );
+	}
+
+	public function test_render_page_without_groups_has_no_form(): void {
+		ob_start();
+		PMH_Grouping::render_page();
+		$html = ob_get_clean();
+		self::assertStringContainsString( '0 groups across 0 products', $html );
+		self::assertStringNotContainsString( '<form', $html );
+	}
+
+	public function test_render_page_requires_capability(): void {
+		PMH_Fake_WP::$can = false;
+		$this->expectException( RuntimeException::class );
+		PMH_Grouping::render_page();
+	}
 }
