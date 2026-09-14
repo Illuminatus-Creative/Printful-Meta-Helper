@@ -285,6 +285,9 @@ final class PMH_Size_Chart {
 		$sizes = array_map( array( __CLASS__, 'normalise_size' ), $sizes );
 		$chart = self::normalise( $chart );
 		$chart['sizes'] = array_values( array_filter( $chart['sizes'], static fn( $s ) => in_array( $s, $sizes, true ) ) );
+		if ( ! $chart['sizes'] ) {
+			return self::empty_chart(); // normalise() would infer sizes from the rows.
+		}
 		return self::normalise( $chart );
 	}
 

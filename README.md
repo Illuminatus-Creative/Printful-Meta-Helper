@@ -16,8 +16,8 @@ filtered to the sizes the product actually has variations for.
 | 1 | `pmh_blank` taxonomy, single-blank enforcement, products-list filter | done |
 | 2 | Term meta: applies-to categories, materials, kind, size chart | done |
 | 3 | Importer: Printful size JSON, page text paste, materials paste | done |
-| 4 | `[pmh_size_chart]` renderer and unit toggle | todo |
-| 5 | Variation filter | todo |
+| 4 | `[pmh_size_chart]` renderer and unit toggle | done |
+| 5 | Variation filter | done |
 | 6 | `[pmh_materials]`, `[pmh_blank_name]` | todo |
 | 7 | Product metabox: filtered single select with preview | todo |
 | 8 | Size grid editor | todo |
@@ -52,6 +52,52 @@ Each box is ignored when empty, so saving again never clobbers data. The two
 chart fields are editable JSON until the grid editor lands. Import results
 and errors show as a notice on the edit screen; the add-new form saves via
 AJAX, so open the blank afterwards to see what was imported.
+
+## Shortcode
+
+```
+[pmh_size_chart]
+[pmh_size_chart product_id="123" unit="cm" toggle="0" note="0" table="body" class="extra classes"]
+```
+
+Defaults to the product in the loop or the queried product. Renders the
+blank's garment chart (`table="body"` for body measurements) with one row per
+size, an inches/centimetres toggle, and the note. Returns an empty string,
+never a message, when the product has no blank, the blank is not apparel,
+the chart is empty, or no chart size matches the product's variations.
+
+The chart shows only sizes the product has a visible variation for. A
+product with no size attribute, or with an "Any size" variation, shows the
+full chart. Stock is ignored; the variation buttons already show that.
+Filters: `pmh_size_attribute` (which attribute is the size),
+`pmh_product_sizes` (the resolved list), `pmh_chart_unit_suffix`,
+`pmh_size_chart_html`.
+
+### Styling
+
+Markup is a contract; style it from the theme or a page-builder module and
+never edit the plugin stylesheet.
+
+```
+.pmh-chart.pmh-chart--{blank-slug}.pmh-chart--unit-in|cm
+  .pmh-chart__toggle > .pmh-chart__unit[data-unit][aria-pressed]
+  .pmh-chart__scroll > table.pmh-chart__table
+    th.pmh-chart__head (--size on the first)
+    tr.pmh-chart__row[data-size] > th.pmh-chart__size, td.pmh-chart__cell
+      span.pmh-chart__val--in / span.pmh-chart__val--cm (one shown by CSS)
+  p.pmh-chart__note
+```
+
+Custom properties on `.pmh-chart`: `--pmh-head-bg`, `--pmh-head-color`,
+`--pmh-value-color`, `--pmh-size-color`, `--pmh-rule`, `--pmh-cell-padding`,
+`--pmh-toggle-bg`, `--pmh-toggle-color`, `--pmh-toggle-border`,
+`--pmh-toggle-active-bg`, `--pmh-toggle-active-color`, `--pmh-note-color`,
+`--pmh-font-size`.
+
+The stylesheet and toggle script are enqueued in the head on product pages
+that have a blank, and at render time anywhere else the shortcode appears.
+The chosen unit is remembered per browser and applied to every chart on the
+page; `window.pmhApplyUnit(root)` re-applies it to charts injected later.
 
 ## Tests
 

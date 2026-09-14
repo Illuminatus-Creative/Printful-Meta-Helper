@@ -1,0 +1,112 @@
+/* Printful Meta Helper size chart.
+   Kept to structure and the unit switch; visual choices are exposed as
+   custom properties so theme or module CSS can restyle without overrides. */
+
+.pmh-chart {
+	--pmh-head-bg: #f0eee9;
+	--pmh-head-color: inherit;
+	--pmh-value-color: inherit;
+	--pmh-size-color: inherit;
+	--pmh-rule: #e3e3e3;
+	--pmh-cell-padding: 0.9em 0.75em;
+	--pmh-toggle-bg: transparent;
+	--pmh-toggle-color: inherit;
+	--pmh-toggle-border: #d0d0d0;
+	--pmh-toggle-active-bg: #1c1c1c;
+	--pmh-toggle-active-color: #fff;
+	--pmh-note-color: inherit;
+	--pmh-font-size: 1em;
+
+	font-size: var(--pmh-font-size);
+	max-width: 100%;
+}
+
+.pmh-chart__toggle {
+	display: flex;
+	gap: 0.5em;
+	margin: 0 0 1em;
+}
+
+.pmh-chart__unit {
+	font: inherit;
+	line-height: 1.2;
+	padding: 0.5em 1em;
+	border: 1px solid var(--pmh-toggle-border);
+	border-radius: 3px;
+	background: var(--pmh-toggle-bg);
+	color: var(--pmh-toggle-color);
+	cursor: pointer;
+}
+
+.pmh-chart__unit[aria-pressed="true"] {
+	background: var(--pmh-toggle-active-bg);
+	color: var(--pmh-toggle-active-color);
+	border-color: var(--pmh-toggle-active-bg);
+	cursor: default;
+}
+
+.pmh-chart__unit:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.pmh-chart__scroll {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.pmh-chart__table {
+	width: 100%;
+	border-collapse: collapse;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.pmh-chart__head {
+	padding: var(--pmh-cell-padding);
+	background: var(--pmh-head-bg);
+	color: var(--pmh-head-color);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	white-space: nowrap;
+}
+
+.pmh-chart__row {
+	border-bottom: 1px solid var(--pmh-rule);
+}
+
+.pmh-chart__size {
+	padding: var(--pmh-cell-padding);
+	color: var(--pmh-size-color);
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.pmh-chart__cell {
+	padding: var(--pmh-cell-padding);
+	color: var(--pmh-value-color);
+	white-space: nowrap;
+}
+
+/* Unit switch: both values are in the DOM, one is shown. */
+.pmh-chart__val {
+	display: none;
+}
+
+.pmh-chart--unit-in .pmh-chart__val--in,
+.pmh-chart--unit-cm .pmh-chart__val--cm {
+	display: inline;
+}
+
+.pmh-chart__note {
+	margin: 1em 0 0;
+	color: var(--pmh-note-color);
+	font-size: 0.9em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.pmh-chart__unit {
+		transition: background-color 120ms ease, color 120ms ease;
+	}
+}

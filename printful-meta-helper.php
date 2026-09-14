@@ -53,9 +53,14 @@ add_action(
 		require_once PMH_DIR . 'includes/class-pmh-blank.php';
 		require_once PMH_DIR . 'includes/class-pmh-taxonomy.php';
 		require_once PMH_DIR . 'includes/class-pmh-term-meta.php';
+		require_once PMH_DIR . 'includes/class-pmh-sizes.php';
+		require_once PMH_DIR . 'includes/class-pmh-renderer.php';
+		require_once PMH_DIR . 'includes/class-pmh-shortcodes.php';
 
 		PMH_Taxonomy::init();
 		PMH_Term_Meta::init();
+		PMH_Renderer::init();
+		PMH_Shortcodes::init();
 	}
 );
 
