@@ -57,10 +57,12 @@ add_action(
 		require_once PMH_DIR . 'includes/class-pmh-renderer.php';
 		require_once PMH_DIR . 'includes/class-pmh-shortcodes.php';
 		require_once PMH_DIR . 'includes/class-pmh-product-meta.php';
+		require_once PMH_DIR . 'includes/class-pmh-grouping.php';
 
 		PMH_Taxonomy::init();
 		PMH_Term_Meta::init();
 		PMH_Product_Meta::init();
+		PMH_Grouping::init();
 		PMH_Renderer::init();
 		PMH_Shortcodes::init();
 	}

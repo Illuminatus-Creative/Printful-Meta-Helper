@@ -142,3 +142,30 @@
 .pmh-grid__json-toggle {
 	margin-bottom: 6px;
 }
+
+/* Blank Groups screen */
+.pmh-groups__summary {
+	font-size: 14px;
+}
+.pmh-groups__table th.pmh-groups__apply,
+.pmh-groups__table td.pmh-groups__apply {
+	width: 3em;
+	text-align: center;
+}
+.pmh-groups__chart {
+	width: 28%;
+}
+.pmh-groups__products details ul {
+	margin: 6px 0 0 1em;
+	list-style: disc;
+	max-height: 14em;
+	overflow-y: auto;
+}
+.pmh-groups__assign label {
+	display: inline-block;
+	min-width: 9em;
+	margin: 2px 0;
+}
+.pmh-groups__assign select {
+	max-width: 16em;
+}

@@ -22,7 +22,7 @@ filtered to the sizes the product actually has variations for.
 | 6 | `[pmh_materials]`, `[pmh_blank_name]` | done |
 | 7 | Product metabox: filtered single select with preview, and a mismatch warning when the product's own Printful chart differs from the blank | done |
 | 8 | Size grid editor | done |
-| 9 | Grouping tool: scan products carrying `pf_advanced_size_chart`, group by identical inch rows, propose one blank per group, bulk-assign | queued |
+| 9 | Grouping tool: scan products carrying `pf_advanced_size_chart`, group by identical inch rows, propose one blank per group, bulk-assign | done |
 
 ## Printful's own copy of the chart
 
@@ -55,6 +55,21 @@ Bulk Edit on the products list assigns across many products at once. The
 list has a "No blank assigned" filter to find stragglers. A product can only
 ever hold one blank; if more than one is submitted, the most recently added
 one wins.
+
+## Seeding blanks from the catalogue
+
+Products → Blank Groups scans every product carrying Printful's chart meta
+and groups them by identical inch rows, largest group first. For each group,
+tick Apply and either pick an existing blank (one with an identical chart is
+preselected and marked ✓) or type a name for a new one. A new blank is
+created as apparel with the group's garment chart, body chart and the union
+of the products' categories, and is fully editable afterwards. Products that
+already have a blank are left alone unless you untick that option. Legacy
+products without the meta are counted on the screen and stay in the "No
+blank assigned" filter for hand assignment.
+
+Two different garments with byte-identical size charts would land in one
+group. Check the product list under each group before applying.
 
 ## Editing a blank
 
