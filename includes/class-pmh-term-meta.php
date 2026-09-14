@@ -85,6 +85,13 @@ final class PMH_Term_Meta {
 		);
 		self::field(
 			$mode,
+			'pmh_import_product',
+			__( 'Import from product', 'printful-meta-helper' ),
+			self::text( 'pmh_import_product', '', '123 or SKU' ),
+			__( 'Product ID or SKU. On save, the size-guide JSON Printful stored on that product (pf_advanced_size_chart) replaces the charts below. Only products Printful has pushed carry it. Ignored if JSON is pasted above.', 'printful-meta-helper' )
+		);
+		self::field(
+			$mode,
 			'pmh_import_text',
 			__( 'Import pasted table', 'printful-meta-helper' ),
 			self::textarea( 'pmh_import_text', '', 6, "Size Label\tLength\tWidth\nS\t28\t18\nM\t29\t20" )
@@ -292,9 +299,10 @@ final class PMH_Term_Meta {
 		$data['handling_max'] = self::sanitise_int_or_empty( $post['pmh_handling_max'] ?? '' );
 
 		// Charts: JSON import > text import > edited textareas.
-		$import_json = isset( $post['pmh_import_json'] ) ? trim( (string) $post['pmh_import_json'] ) : '';
-		$import_text = isset( $post['pmh_import_text'] ) ? trim( (string) $post['pmh_import_text'] ) : '';
-		$imported    = false;
+		$import_json    = isset( $post['pmh_import_json'] ) ? trim( (string) $post['pmh_import_json'] ) : '';
+		$import_product = isset( $post['pmh_import_product'] ) ? trim( (string) $post['pmh_import_product'] ) : '';
+		$import_text    = isset( $post['pmh_import_text'] ) ? trim( (string) $post['pmh_import_text'] ) : '';
+		$imported       = false;
 
 		if ( '' !== $import_json ) {
 			if ( strlen( $import_json ) > 512 * 1024 ) {
@@ -321,6 +329,33 @@ final class PMH_Term_Meta {
 					}
 				} catch ( PMH_Import_Exception $e ) {
 					$errors[] = __( 'JSON import failed: ', 'printful-meta-helper' ) . $e->getMessage();
+				}
+			}
+		} elseif ( '' !== $import_product ) {
+			$product_id = self::resolve_product_ref( $import_product );
+			if ( ! $product_id ) {
+				/* translators: %s: what the user typed */
+				$errors[] = sprintf( __( 'Import from product: no product found for "%s".', 'printful-meta-helper' ), $import_product );
+			} else {
+				$result = PMH_Importer::from_product_meta( $product_id );
+				if ( ! $result || ( ! $result['product'] && ! $result['body'] ) ) {
+					/* translators: %d: product ID */
+					$errors[] = sprintf( __( 'Import from product: product %d has no readable Printful size chart (legacy products never do).', 'printful-meta-helper' ), $product_id );
+				} else {
+					if ( $result['product'] ) {
+						$data['chart'] = self::sanitise_chart( $result['product'] );
+					}
+					if ( $result['body'] ) {
+						$data['body_chart'] = self::sanitise_chart( $result['body'] );
+					}
+					$imported   = true;
+					$messages[] = sprintf(
+						/* translators: 1: product ID, 2: garment row count, 3: body row count */
+						__( 'Size chart imported from product %1$d: %2$d garment rows, %3$d body rows.', 'printful-meta-helper' ),
+						$product_id,
+						$result['product'] ? count( $result['product']['rows'] ) : 0,
+						$result['body'] ? count( $result['body']['rows'] ) : 0
+					);
 				}
 			}
 		} elseif ( '' !== $import_text ) {
@@ -356,6 +391,29 @@ final class PMH_Term_Meta {
 		if ( $messages || $errors ) {
 			set_transient( self::NOTICE_KEY . get_current_user_id(), compact( 'messages', 'errors' ), 120 );
 		}
+	}
+
+	/**
+	 * A product ID or SKU typed by an editor -> product ID, or 0.
+	 * Variations resolve to their parent, which is where Printful writes.
+	 */
+	private static function resolve_product_ref( string $ref ): int {
+		$ref = trim( $ref );
+		$id  = 0;
+		if ( ctype_digit( $ref ) ) {
+			$id = (int) $ref;
+		} elseif ( function_exists( 'wc_get_product_id_by_sku' ) ) {
+			$id = (int) wc_get_product_id_by_sku( $ref );
+		}
+		if ( ! $id ) {
+			return 0;
+		}
+		$type = get_post_type( $id );
+		if ( 'product_variation' === $type ) {
+			$id   = (int) wp_get_post_parent_id( $id );
+			$type = get_post_type( $id );
+		}
+		return 'product' === $type ? $id : 0;
 	}
 
 	/**

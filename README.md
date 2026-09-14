@@ -16,7 +16,7 @@ filtered to the sizes the product actually has variations for.
 | 1 | `pmh_blank` taxonomy, single-blank enforcement, products-list filter | done |
 | 2 | Term meta: applies-to categories, materials, kind, size chart | done |
 | 3 | Importer: Printful size JSON, page text paste, materials paste | done |
-| 3b | Import from a product's `pf_advanced_size_chart` meta by ID or SKU | todo |
+| 3b | Import from a product's `pf_advanced_size_chart` meta by ID or SKU | done |
 | 4 | `[pmh_size_chart]` renderer and unit toggle | done |
 | 5 | Variation filter | done |
 | 6 | `[pmh_materials]`, `[pmh_blank_name]` | done |
@@ -66,8 +66,14 @@ Products → Blanks → edit. Three import boxes are processed when you save:
   `productMeasurements` become the garment chart and from
   `modelMeasurements` the body chart. Centimetre rows are ignored because
   they are exact conversions.
+- **Import from product**: a product ID or SKU. Reads the size-guide JSON
+  Printful's sync stored on that product and runs it through the same
+  importer. Legacy products carry no such meta and fail with a notice.
 - **Import pasted table**: the tab-separated table copied from the Printful
   page, with a radio for the unit it was showing.
+
+Precedence when more than one box is filled: JSON, then product, then
+pasted table.
 
 Each box is ignored when empty, so saving again never clobbers data. The two
 chart fields are editable JSON until the grid editor lands. Import results
