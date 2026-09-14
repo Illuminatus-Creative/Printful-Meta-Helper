@@ -1,0 +1,14 @@
+Size chart
+Inches
+Centimeters
+Size Label	Length	Width
+XS	27	16 ½
+S	28	18
+M	29	20
+L	30	22
+XL	31	24
+2XL	32	26
+3XL	33	28
+4XL	34	30
+5XL	35	32
+Product measurements may vary by up to 2" (5 cm).

@@ -5,3 +5,30 @@
 .taxonomy-pmh_blank tr.form-field.term-parent-wrap {
 	display: none;
 }
+
+/* Blank edit form */
+.taxonomy-pmh_blank .pmh-heading {
+	margin: 1.5em 0 0.25em;
+	padding-bottom: 0.25em;
+	border-bottom: 1px solid #dcdcde;
+	font-size: 1.1em;
+}
+.taxonomy-pmh_blank .pmh-heading-row th {
+	padding-bottom: 0;
+}
+.taxonomy-pmh_blank .pmh-checklist {
+	max-height: 14em;
+	overflow-y: auto;
+	margin: 0;
+	padding: 6px 10px;
+	border: 1px solid #dcdcde;
+	background: #fff;
+}
+.taxonomy-pmh_blank .pmh-checklist li {
+	margin: 2px 0;
+}
+.taxonomy-pmh_blank textarea.code {
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	white-space: pre;
+}

@@ -48,9 +48,14 @@ add_action(
 			return;
 		}
 
+		require_once PMH_DIR . 'includes/class-pmh-size-chart.php';
+		require_once PMH_DIR . 'includes/class-pmh-importer.php';
+		require_once PMH_DIR . 'includes/class-pmh-blank.php';
 		require_once PMH_DIR . 'includes/class-pmh-taxonomy.php';
+		require_once PMH_DIR . 'includes/class-pmh-term-meta.php';
 
 		PMH_Taxonomy::init();
+		PMH_Term_Meta::init();
 	}
 );
 
