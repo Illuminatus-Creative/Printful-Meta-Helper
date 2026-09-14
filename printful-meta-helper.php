@@ -48,25 +48,29 @@ add_action(
 			return;
 		}
 
-		require_once PMH_DIR . 'includes/class-pmh-size-chart.php';
-		require_once PMH_DIR . 'includes/class-pmh-importer.php';
-		require_once PMH_DIR . 'includes/class-pmh-blank.php';
-		require_once PMH_DIR . 'includes/class-pmh-taxonomy.php';
-		require_once PMH_DIR . 'includes/class-pmh-term-meta.php';
-		require_once PMH_DIR . 'includes/class-pmh-sizes.php';
-		require_once PMH_DIR . 'includes/class-pmh-renderer.php';
-		require_once PMH_DIR . 'includes/class-pmh-shortcodes.php';
-		require_once PMH_DIR . 'includes/class-pmh-product-meta.php';
-		require_once PMH_DIR . 'includes/class-pmh-grouping.php';
+		spl_autoload_register( 'pmh_autoload' );
 
 		PMH_Taxonomy::init();
 		PMH_Term_Meta::init();
-		PMH_Product_Meta::init();
+		PMH_Admin_Assets::init();
 		PMH_Grouping::init();
 		PMH_Renderer::init();
 		PMH_Shortcodes::init();
 	}
 );
+
+/**
+ * PMH_Size_Chart -> includes/class-pmh-size-chart.php
+ */
+function pmh_autoload( string $class ): void {
+	if ( 0 !== strpos( $class, 'PMH_' ) ) {
+		return;
+	}
+	$file = PMH_DIR . 'includes/class-' . str_replace( '_', '-', strtolower( $class ) ) . '.php';
+	if ( is_readable( $file ) ) {
+		require_once $file;
+	}
+}
 
 /**
  * Admin notice shown when WooCommerce is not active.

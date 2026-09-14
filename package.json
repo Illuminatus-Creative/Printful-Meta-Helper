@@ -1,0 +1,12 @@
+{
+  "name": "printful-meta-helper",
+  "private": true,
+  "description": "Browser-script tests for the Printful Meta Helper WordPress plugin.",
+  "scripts": {
+    "test": "node --test tests/js/",
+    "check": "node --check admin/js/blank-filter.js && node --check admin/js/size-grid.js && node --check public/js/unit-toggle.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

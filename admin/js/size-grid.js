@@ -201,7 +201,7 @@
 			labelTd.appendChild( label );
 			tr.appendChild( labelTd );
 
-			m.sizes.forEach( function ( size ) {
+			m.sizes.forEach( function ( size, col ) {
 				var td = el( 'td', 'pmh-grid__cell' );
 				var input = el( 'input', 'pmh-grid__value' );
 				input.type = 'text';
@@ -209,7 +209,9 @@
 				input.placeholder = '28 or 34-37';
 				input.setAttribute( 'aria-label', row.label + ' ' + size );
 				input.addEventListener( 'input', function () {
-					row.values[ size ] = input.value;
+					// Look the size up by column at edit time: the header may
+					// have been renamed since this cell was rendered.
+					row.values[ m.sizes[ col ] ] = input.value;
 					input.classList.toggle( 'pmh-grid__value--bad', !! input.value.trim() && ! CELL_OK.test( input.value ) );
 					self.sync();
 				} );
@@ -240,7 +242,7 @@
 		wrap.appendChild( table );
 		this.root.appendChild( wrap );
 
-		if ( ! m.sizes.length && ! m.rows.length ) {
+		if ( ! m.sizes.length || ! m.rows.length ) {
 			this.root.appendChild( el( 'p', 'description', t( 'empty', 'No chart yet. Add a size and a measurement, or use one of the import boxes above.' ) ) );
 		}
 	};

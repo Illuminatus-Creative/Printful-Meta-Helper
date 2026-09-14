@@ -27,7 +27,6 @@ final class PMH_Taxonomy {
 		add_action( 'set_object_terms', array( __CLASS__, 'enforce_single_term' ), 10, 6 );
 		add_action( 'restrict_manage_posts', array( __CLASS__, 'render_list_filter' ), 10, 2 );
 		add_action( 'pre_get_posts', array( __CLASS__, 'apply_list_filter' ) );
-		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 	}
 
 	public static function register(): void {
@@ -138,17 +137,7 @@ final class PMH_Taxonomy {
 			return;
 		}
 
-		$terms = get_terms(
-			array(
-				'taxonomy'   => PMH_TAXONOMY,
-				'hide_empty' => false,
-				'orderby'    => 'name',
-			)
-		);
-		if ( is_wp_error( $terms ) ) {
-			$terms = array();
-		}
-
+		$terms   = PMH_Blank::all();
 		$current = isset( $_GET[ self::FILTER_ARG ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::FILTER_ARG ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
 		echo '<label class="screen-reader-text" for="pmh-blank-filter">' . esc_html__( 'Filter by blank', 'printful-meta-helper' ) . '</label>';
@@ -202,43 +191,5 @@ final class PMH_Taxonomy {
 		}
 
 		$query->set( 'tax_query', $tax_query );
-	}
-
-	/**
-	 * Admin CSS on the blank term screens only (hides the parent field the
-	 * hierarchical registration adds, which has no meaning for blanks).
-	 *
-	 * @param string $hook_suffix Current admin page.
-	 */
-	public static function enqueue_admin_assets( $hook_suffix ): void {
-		if ( ! in_array( $hook_suffix, array( 'edit-tags.php', 'term.php' ), true ) ) {
-			return;
-		}
-		$screen = get_current_screen();
-		if ( ! $screen || PMH_TAXONOMY !== $screen->taxonomy ) {
-			return;
-		}
-		wp_enqueue_style( 'pmh-admin', PMH_URL . 'admin/css/admin.css', array(), PMH_VERSION );
-		wp_enqueue_script( 'pmh-size-grid', PMH_URL . 'admin/js/size-grid.js', array(), PMH_VERSION, array( 'in_footer' => true ) );
-		wp_add_inline_script(
-			'pmh-size-grid',
-			'window.pmhGridI18n = ' . wp_json_encode(
-				array(
-					'editJson'        => __( 'Edit as JSON', 'printful-meta-helper' ),
-					'editGrid'        => __( 'Back to grid', 'printful-meta-helper' ),
-					'badJson'         => __( 'The JSON could not be read. Fix it in the JSON view, or clear it and start the grid from scratch.', 'printful-meta-helper' ),
-					'note'            => __( 'Note', 'printful-meta-helper' ),
-					'notePlaceholder' => __( 'Product measurements may vary by up to 2" (5 cm).', 'printful-meta-helper' ),
-					'measurement'     => __( 'Measurement', 'printful-meta-helper' ),
-					'labelPlaceholder' => __( 'Length', 'printful-meta-helper' ),
-					'size'            => __( 'Size', 'printful-meta-helper' ),
-					'sizeName'        => __( 'Size name', 'printful-meta-helper' ),
-					'removeSize'      => __( 'Remove this size', 'printful-meta-helper' ),
-					'removeRow'       => __( 'Remove this measurement', 'printful-meta-helper' ),
-					'empty'           => __( 'No chart yet. Add a size and a measurement, or use one of the import boxes above.', 'printful-meta-helper' ),
-				)
-			) . ';',
-			'before'
-		);
 	}
 }

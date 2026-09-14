@@ -86,9 +86,7 @@ final class PMH_Renderer {
 		if ( ! $opts['toggle'] ) {
 			$classes[] = 'pmh-chart--locked';
 		}
-		foreach ( preg_split( '/\s+/', (string) $opts['class'], -1, PREG_SPLIT_NO_EMPTY ) as $extra ) {
-			$classes[] = sanitize_html_class( $extra );
-		}
+		$classes = array_merge( $classes, PMH_Util::extra_classes( (string) $opts['class'] ) );
 
 		$html  = '<div class="' . esc_attr( implode( ' ', array_unique( $classes ) ) ) . '" data-pmh-unit="' . esc_attr( $unit ) . '" data-pmh-blank="' . esc_attr( $blank->slug ) . '">';
 
@@ -224,10 +222,7 @@ final class PMH_Renderer {
 			return '';
 		}
 
-		$classes = array( 'pmh-materials', 'pmh-materials--' . $blank->slug );
-		foreach ( preg_split( '/\s+/', (string) $opts['class'], -1, PREG_SPLIT_NO_EMPTY ) as $extra ) {
-			$classes[] = sanitize_html_class( $extra );
-		}
+		$classes = array_merge( array( 'pmh-materials', 'pmh-materials--' . $blank->slug ), PMH_Util::extra_classes( (string) $opts['class'] ) );
 
 		$html = '<div class="' . esc_attr( implode( ' ', array_unique( $classes ) ) ) . '" data-pmh-blank="' . esc_attr( $blank->slug ) . '">'
 			. '<dl class="pmh-materials__list">' . $items . '</dl></div>';
@@ -245,7 +240,7 @@ final class PMH_Renderer {
 
 	private static function material_value( array $data ): string {
 		$base       = trim( (string) $data['material_solid'] );
-		$exceptions = self::split_lines( (string) $data['material_exceptions'] );
+		$exceptions = PMH_Util::lines( (string) $data['material_exceptions'] );
 		if ( '' === $base && ! $exceptions ) {
 			return '';
 		}
@@ -261,7 +256,7 @@ final class PMH_Renderer {
 	}
 
 	private static function lines_value( string $text ): string {
-		$lines = self::split_lines( $text );
+		$lines = PMH_Util::lines( $text );
 		if ( ! $lines ) {
 			return '';
 		}
@@ -273,17 +268,5 @@ final class PMH_Renderer {
 			$html .= '<li>' . esc_html( $line ) . '</li>';
 		}
 		return $html . '</ul>';
-	}
-
-	/** @return string[] */
-	private static function split_lines( string $text ): array {
-		$lines = array();
-		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
-			$line = trim( $line );
-			if ( '' !== $line ) {
-				$lines[] = $line;
-			}
-		}
-		return $lines;
 	}
 }

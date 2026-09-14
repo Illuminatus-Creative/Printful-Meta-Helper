@@ -119,6 +119,22 @@ final class PMH_Blank {
 	}
 
 	/**
+	 * Every blank, by name.
+	 *
+	 * @return WP_Term[]
+	 */
+	public static function all(): array {
+		$terms = get_terms(
+			array(
+				'taxonomy'   => PMH_TAXONOMY,
+				'hide_empty' => false,
+				'orderby'    => 'name',
+			)
+		);
+		return is_wp_error( $terms ) ? array() : array_values( $terms );
+	}
+
+	/**
 	 * Blanks whose "applies to" categories intersect the given category IDs.
 	 * A blank with no categories set applies everywhere.
 	 *
@@ -127,19 +143,9 @@ final class PMH_Blank {
 	 */
 	public static function for_categories( array $cat_ids ): array {
 		$cat_ids = array_map( 'absint', $cat_ids );
-		$all     = get_terms(
-			array(
-				'taxonomy'   => PMH_TAXONOMY,
-				'hide_empty' => false,
-				'orderby'    => 'name',
-			)
-		);
-		if ( is_wp_error( $all ) ) {
-			return array();
-		}
 		return array_values(
 			array_filter(
-				$all,
+				self::all(),
 				static function ( WP_Term $term ) use ( $cat_ids ) {
 					$cats = self::get( $term->term_id )['cats'];
 					return ! $cats || array_intersect( $cats, $cat_ids );

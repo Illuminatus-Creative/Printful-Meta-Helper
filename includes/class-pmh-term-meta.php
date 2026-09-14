@@ -14,7 +14,6 @@ final class PMH_Term_Meta {
 
 	private const NONCE_ACTION = 'pmh_save_blank';
 	private const NONCE_FIELD  = 'pmh_blank_nonce';
-	private const NOTICE_KEY   = 'pmh_blank_notice_';
 
 	public static function init(): void {
 		add_action( PMH_TAXONOMY . '_add_form_fields', array( __CLASS__, 'render_add_form' ) );
@@ -259,20 +258,48 @@ final class PMH_Term_Meta {
 			return;
 		}
 
-		$post     = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- each field sanitised below.
+		$post   = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- each field sanitised below.
+		$result = self::collect( is_array( $post ) ? $post : array() );
+
+		PMH_Blank::update( $term_id, $result['data'] );
+		PMH_Notices::set( 'blank', $result['messages'], $result['errors'] );
+	}
+
+	/**
+	 * Turn the submitted form into sanitised blank data plus notices.
+	 * No side effects, so it is unit-tested directly.
+	 *
+	 * @param array $post Unslashed POST fields.
+	 * @return array{data: array, messages: string[], errors: string[]}
+	 */
+	public static function collect( array $post ): array {
 		$messages = array();
 		$errors   = array();
-		$data     = array();
 
-		// Applies-to and kind.
-		$data['cats'] = self::sanitise_cats( $post['pmh_cats'] ?? array() );
-		$kind         = isset( $post['pmh_kind'] ) ? sanitize_key( $post['pmh_kind'] ) : 'apparel';
-		$data['kind'] = in_array( $kind, PMH_Blank::KINDS, true ) ? $kind : 'apparel';
+		$data = self::collect_basics( $post );
+		$data = array_merge( $data, self::collect_materials( $post, $messages, $errors ) );
+		$data = array_merge( $data, self::collect_charts( $post, $messages, $errors ) );
 
-		// Materials: pasted paragraph overrides the individual fields.
-		$materials_paste = isset( $post['pmh_materials_paste'] ) ? trim( (string) $post['pmh_materials_paste'] ) : '';
-		if ( '' !== $materials_paste ) {
-			$split = PMH_Importer::materials_from_text( $materials_paste );
+		return compact( 'data', 'messages', 'errors' );
+	}
+
+	private static function collect_basics( array $post ): array {
+		$kind = isset( $post['pmh_kind'] ) ? sanitize_key( (string) $post['pmh_kind'] ) : 'apparel';
+		return array(
+			'cats'         => self::sanitise_cats( $post['pmh_cats'] ?? array() ),
+			'kind'         => in_array( $kind, PMH_Blank::KINDS, true ) ? $kind : 'apparel',
+			'handling_min' => self::sanitise_int_or_empty( $post['pmh_handling_min'] ?? '' ),
+			'handling_max' => self::sanitise_int_or_empty( $post['pmh_handling_max'] ?? '' ),
+		);
+	}
+
+	/**
+	 * A pasted Printful paragraph overrides the individual fields.
+	 */
+	private static function collect_materials( array $post, array &$messages, array &$errors ): array {
+		$paste = isset( $post['pmh_materials_paste'] ) ? trim( (string) $post['pmh_materials_paste'] ) : '';
+		if ( '' !== $paste ) {
+			$split = PMH_Importer::materials_from_text( $paste );
 			if ( '' === $split['material_solid'] && '' === $split['construction'] && '' === $split['fabric_weight'] ) {
 				$errors[] = __( 'Materials paste: no bullet lines found, fields left unchanged.', 'printful-meta-helper' );
 			} else {
@@ -288,132 +315,128 @@ final class PMH_Term_Meta {
 				$messages[] = __( 'Materials imported from the pasted paragraph.', 'printful-meta-helper' );
 			}
 		}
-		$data['material_solid']      = sanitize_text_field( (string) ( $post['pmh_material_solid'] ?? '' ) );
-		$data['material_exceptions'] = self::sanitise_lines( (string) ( $post['pmh_material_exceptions'] ?? '' ) );
-		$data['fabric_weight']       = sanitize_text_field( (string) ( $post['pmh_fabric_weight'] ?? '' ) );
-		$data['construction']        = self::sanitise_lines( (string) ( $post['pmh_construction'] ?? '' ) );
-		$data['care']                = self::sanitise_lines( (string) ( $post['pmh_care'] ?? '' ) );
+		return array(
+			'material_solid'      => sanitize_text_field( (string) ( $post['pmh_material_solid'] ?? '' ) ),
+			'material_exceptions' => self::sanitise_lines( (string) ( $post['pmh_material_exceptions'] ?? '' ) ),
+			'fabric_weight'       => sanitize_text_field( (string) ( $post['pmh_fabric_weight'] ?? '' ) ),
+			'construction'        => self::sanitise_lines( (string) ( $post['pmh_construction'] ?? '' ) ),
+			'care'                => self::sanitise_lines( (string) ( $post['pmh_care'] ?? '' ) ),
+		);
+	}
 
-		// Handling (parked).
-		$data['handling_min'] = self::sanitise_int_or_empty( $post['pmh_handling_min'] ?? '' );
-		$data['handling_max'] = self::sanitise_int_or_empty( $post['pmh_handling_max'] ?? '' );
+	/**
+	 * Charts, in precedence order: pasted JSON, then a product reference,
+	 * then the pasted table, then whatever the grid/textareas hold. An
+	 * import that fails leaves the textarea values in charge.
+	 */
+	private static function collect_charts( array $post, array &$messages, array &$errors ): array {
+		$imported = self::import_charts( $post, $messages, $errors );
+		$data     = array();
 
-		// Charts: JSON import > text import > edited textareas.
-		$import_json    = isset( $post['pmh_import_json'] ) ? trim( (string) $post['pmh_import_json'] ) : '';
-		$import_product = isset( $post['pmh_import_product'] ) ? trim( (string) $post['pmh_import_product'] ) : '';
-		$import_text    = isset( $post['pmh_import_text'] ) ? trim( (string) $post['pmh_import_text'] ) : '';
-		$imported       = false;
-
-		if ( '' !== $import_json ) {
-			if ( strlen( $import_json ) > 512 * 1024 ) {
-				$errors[] = __( 'JSON import: paste is too large (limit 512 KB).', 'printful-meta-helper' );
-			} else {
-				try {
-					$result = PMH_Importer::from_json( $import_json );
-					if ( $result['product'] ) {
-						$data['chart'] = self::sanitise_chart( $result['product'] );
-					}
-					if ( $result['body'] ) {
-						$data['body_chart'] = self::sanitise_chart( $result['body'] );
-					}
-					if ( ! $result['product'] && ! $result['body'] ) {
-						$errors[] = __( 'JSON import: no inch rows found in either table.', 'printful-meta-helper' );
-					} else {
-						$imported   = true;
-						$messages[] = sprintf(
-							/* translators: 1: garment row count, 2: body row count */
-							__( 'Size chart imported from JSON: %1$d garment rows, %2$d body rows.', 'printful-meta-helper' ),
-							$result['product'] ? count( $result['product']['rows'] ) : 0,
-							$result['body'] ? count( $result['body']['rows'] ) : 0
-						);
-					}
-				} catch ( PMH_Import_Exception $e ) {
-					$errors[] = __( 'JSON import failed: ', 'printful-meta-helper' ) . $e->getMessage();
-				}
-			}
-		} elseif ( '' !== $import_product ) {
-			$product_id = self::resolve_product_ref( $import_product );
-			if ( ! $product_id ) {
-				/* translators: %s: what the user typed */
-				$errors[] = sprintf( __( 'Import from product: no product found for "%s".', 'printful-meta-helper' ), $import_product );
-			} else {
-				$result = PMH_Importer::from_product_meta( $product_id );
-				if ( ! $result || ( ! $result['product'] && ! $result['body'] ) ) {
-					/* translators: %d: product ID */
-					$errors[] = sprintf( __( 'Import from product: product %d has no readable Printful size chart (legacy products never do).', 'printful-meta-helper' ), $product_id );
-				} else {
-					if ( $result['product'] ) {
-						$data['chart'] = self::sanitise_chart( $result['product'] );
-					}
-					if ( $result['body'] ) {
-						$data['body_chart'] = self::sanitise_chart( $result['body'] );
-					}
-					$imported   = true;
-					$messages[] = sprintf(
-						/* translators: 1: product ID, 2: garment row count, 3: body row count */
-						__( 'Size chart imported from product %1$d: %2$d garment rows, %3$d body rows.', 'printful-meta-helper' ),
-						$product_id,
-						$result['product'] ? count( $result['product']['rows'] ) : 0,
-						$result['body'] ? count( $result['body']['rows'] ) : 0
-					);
-				}
-			}
-		} elseif ( '' !== $import_text ) {
-			$unit = ( $post['pmh_import_text_unit'] ?? 'in' ) === 'cm' ? 'cm' : 'in';
-			try {
-				$data['chart'] = self::sanitise_chart( PMH_Importer::from_text( $import_text, $unit ) );
-				$imported      = true;
-				$messages[]    = sprintf(
-					/* translators: %d: row count */
-					__( 'Garment chart imported from pasted table: %d rows.', 'printful-meta-helper' ),
-					count( $data['chart']['rows'] )
-				);
-			} catch ( PMH_Import_Exception $e ) {
-				$errors[] = __( 'Table import failed: ', 'printful-meta-helper' ) . $e->getMessage();
-			}
-		}
-
-		if ( ! $imported || ! isset( $data['chart'] ) ) {
+		if ( isset( $imported['chart'] ) ) {
+			$data['chart'] = $imported['chart'];
+		} else {
 			$parsed = self::chart_from_textarea( (string) ( $post['pmh_chart'] ?? '' ), __( 'Garment chart', 'printful-meta-helper' ), $errors );
 			if ( null !== $parsed ) {
 				$data['chart'] = $parsed;
 			}
 		}
-		if ( ! $imported || ! isset( $data['body_chart'] ) ) {
+
+		if ( isset( $imported['body_chart'] ) ) {
+			$data['body_chart'] = $imported['body_chart'];
+		} else {
 			$parsed = self::chart_from_textarea( (string) ( $post['pmh_body_chart'] ?? '' ), __( 'Body chart', 'printful-meta-helper' ), $errors );
 			if ( null !== $parsed ) {
 				$data['body_chart'] = $parsed;
 			}
 		}
 
-		PMH_Blank::update( $term_id, $data );
-
-		if ( $messages || $errors ) {
-			set_transient( self::NOTICE_KEY . get_current_user_id(), compact( 'messages', 'errors' ), 120 );
-		}
+		return $data;
 	}
 
 	/**
-	 * A product ID or SKU typed by an editor -> product ID, or 0.
-	 * Variations resolve to their parent, which is where Printful writes.
+	 * @return array{chart?: array, body_chart?: array} Only the charts an
+	 *         import produced.
 	 */
-	private static function resolve_product_ref( string $ref ): int {
-		$ref = trim( $ref );
-		$id  = 0;
-		if ( ctype_digit( $ref ) ) {
-			$id = (int) $ref;
-		} elseif ( function_exists( 'wc_get_product_id_by_sku' ) ) {
-			$id = (int) wc_get_product_id_by_sku( $ref );
+	private static function import_charts( array $post, array &$messages, array &$errors ): array {
+		$json    = isset( $post['pmh_import_json'] ) ? trim( (string) $post['pmh_import_json'] ) : '';
+		$product = isset( $post['pmh_import_product'] ) ? trim( (string) $post['pmh_import_product'] ) : '';
+		$text    = isset( $post['pmh_import_text'] ) ? trim( (string) $post['pmh_import_text'] ) : '';
+
+		if ( '' !== $json ) {
+			if ( strlen( $json ) > 512 * 1024 ) {
+				$errors[] = __( 'JSON import: paste is too large (limit 512 KB).', 'printful-meta-helper' );
+				return array();
+			}
+			try {
+				return self::charts_from_result( PMH_Importer::from_json( $json ), __( 'JSON', 'printful-meta-helper' ), $messages, $errors );
+			} catch ( PMH_Import_Exception $e ) {
+				$errors[] = __( 'JSON import failed: ', 'printful-meta-helper' ) . $e->getMessage();
+				return array();
+			}
 		}
-		if ( ! $id ) {
-			return 0;
+
+		if ( '' !== $product ) {
+			$product_id = PMH_Util::resolve_product_id( $product );
+			if ( ! $product_id ) {
+				/* translators: %s: what the user typed */
+				$errors[] = sprintf( __( 'Import from product: no product found for "%s".', 'printful-meta-helper' ), $product );
+				return array();
+			}
+			$result = PMH_Importer::from_product_meta( $product_id );
+			if ( ! $result ) {
+				/* translators: %d: product ID */
+				$errors[] = sprintf( __( 'Import from product: product %d has no readable Printful size chart (legacy products never do).', 'printful-meta-helper' ), $product_id );
+				return array();
+			}
+			/* translators: %d: product ID */
+			return self::charts_from_result( $result, sprintf( __( 'product %d', 'printful-meta-helper' ), $product_id ), $messages, $errors );
 		}
-		$type = get_post_type( $id );
-		if ( 'product_variation' === $type ) {
-			$id   = (int) wp_get_post_parent_id( $id );
-			$type = get_post_type( $id );
+
+		if ( '' !== $text ) {
+			$unit = ( $post['pmh_import_text_unit'] ?? 'in' ) === 'cm' ? 'cm' : 'in';
+			try {
+				$chart      = self::sanitise_chart( PMH_Importer::from_text( $text, $unit ) );
+				$messages[] = sprintf(
+					/* translators: %d: row count */
+					__( 'Garment chart imported from pasted table: %d rows.', 'printful-meta-helper' ),
+					count( $chart['rows'] )
+				);
+				return array( 'chart' => $chart );
+			} catch ( PMH_Import_Exception $e ) {
+				$errors[] = __( 'Table import failed: ', 'printful-meta-helper' ) . $e->getMessage();
+				return array();
+			}
 		}
-		return 'product' === $type ? $id : 0;
+
+		return array();
+	}
+
+	/**
+	 * @param array{product: ?array, body: ?array} $result Importer output.
+	 * @param string $source Human label for the notice.
+	 */
+	private static function charts_from_result( array $result, string $source, array &$messages, array &$errors ): array {
+		$out = array();
+		if ( $result['product'] ) {
+			$out['chart'] = self::sanitise_chart( $result['product'] );
+		}
+		if ( $result['body'] ) {
+			$out['body_chart'] = self::sanitise_chart( $result['body'] );
+		}
+		if ( ! $out ) {
+			/* translators: %s: import source */
+			$errors[] = sprintf( __( 'Import from %s: no inch rows found in either table.', 'printful-meta-helper' ), $source );
+			return array();
+		}
+		$messages[] = sprintf(
+			/* translators: 1: import source, 2: garment row count, 3: body row count */
+			__( 'Size chart imported from %1$s: %2$d garment rows, %3$d body rows.', 'printful-meta-helper' ),
+			$source,
+			isset( $out['chart'] ) ? count( $out['chart']['rows'] ) : 0,
+			isset( $out['body_chart'] ) ? count( $out['body_chart']['rows'] ) : 0
+		);
+		return $out;
 	}
 
 	/**
@@ -474,14 +497,7 @@ final class PMH_Term_Meta {
 	}
 
 	private static function sanitise_lines( string $text ): string {
-		$lines = array();
-		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
-			$line = sanitize_text_field( $line );
-			if ( '' !== $line ) {
-				$lines[] = $line;
-			}
-		}
-		return implode( "\n", $lines );
+		return implode( "\n", array_map( 'sanitize_text_field', PMH_Util::lines( $text ) ) );
 	}
 
 	private static function sanitise_int_or_empty( $raw ): string {
@@ -498,18 +514,6 @@ final class PMH_Term_Meta {
 		if ( ! $screen || PMH_TAXONOMY !== $screen->taxonomy ) {
 			return;
 		}
-		$key    = self::NOTICE_KEY . get_current_user_id();
-		$notice = get_transient( $key );
-		if ( ! is_array( $notice ) ) {
-			return;
-		}
-		delete_transient( $key );
-
-		foreach ( (array) ( $notice['errors'] ?? array() ) as $text ) {
-			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $text ) . '</p></div>';
-		}
-		foreach ( (array) ( $notice['messages'] ?? array() ) as $text ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $text ) . '</p></div>';
-		}
+		PMH_Notices::render( PMH_Notices::take( 'blank' ) );
 	}
 }

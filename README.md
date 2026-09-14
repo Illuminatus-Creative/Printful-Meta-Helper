@@ -165,15 +165,24 @@ page; `window.pmhApplyUnit(root)` re-applies it to charts injected later.
 ## Tests
 
 ```
-composer install
-composer test
+composer install && composer test     # PHP
+npm install && npm test               # browser scripts under jsdom
 ```
 
-Tests cover the pure classes (size chart normalising, cell parsing, the
-three importers) and run without WordPress.
+Neither suite needs WordPress. `tests/wp-stubs.php` is a small in-memory
+WordPress (posts, terms, meta, transients, capabilities) that the PHP tests
+run the plugin against, so the save layer, the single-blank guard, the
+grouping scan and the data access are covered alongside the pure classes.
+The JavaScript tests load each admin and public script into a jsdom page
+and drive it through clicks and input events.
 
 ## Conventions
 
 - Prefix `pmh_` / `PMH_`, text domain `printful-meta-helper`.
 - Inches are stored; centimetres are computed at render.
 - No page builder is referenced anywhere in the code.
+- Classes autoload from `includes/class-pmh-{name}.php`; new classes need
+  no `require`.
+- `PMH_Blank` is the only reader and writer of term meta. `PMH_Util` holds
+  the shared helpers, `PMH_Notices` the cross-redirect notices, and
+  `PMH_Admin_Assets` every admin enqueue.

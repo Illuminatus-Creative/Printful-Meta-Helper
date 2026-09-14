@@ -9,16 +9,13 @@
  * will render given the product's saved variations, and whether the blank
  * matches the product's own Printful chart when the product carries one.
  *
- * Nothing here talks to the server after page load.
+ * Nothing here talks to the server after page load. Assets and the inline
+ * data are enqueued by PMH_Admin_Assets.
  */
 
 defined( 'ABSPATH' ) || exit;
 
 final class PMH_Product_Meta {
-
-	public static function init(): void {
-		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
-	}
 
 	/**
 	 * Taxonomy meta_box_cb. Signature fixed by core: ( $post, $box ).
@@ -28,16 +25,7 @@ final class PMH_Product_Meta {
 		$current    = PMH_Blank::for_product( $product_id );
 		$current_id = $current ? (int) $current->term_id : 0;
 
-		$blanks = get_terms(
-			array(
-				'taxonomy'   => PMH_TAXONOMY,
-				'hide_empty' => false,
-				'orderby'    => 'name',
-			)
-		);
-		if ( is_wp_error( $blanks ) ) {
-			$blanks = array();
-		}
+		$blanks = PMH_Blank::all();
 
 		echo '<div class="pmh-assign" id="pmh-assign">';
 		// Hidden 0 so choosing "No blank" clears the term (core's category box does the same).
@@ -65,33 +53,12 @@ final class PMH_Product_Meta {
 		echo '</div>';
 	}
 
-	public static function enqueue_assets( $hook_suffix ): void {
-		if ( ! in_array( $hook_suffix, array( 'post.php', 'post-new.php' ), true ) ) {
-			return;
-		}
-		$screen = get_current_screen();
-		if ( ! $screen || 'product' !== $screen->post_type ) {
-			return;
-		}
-		$product_id = isset( $_GET['post'] ) ? absint( $_GET['post'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
-		wp_enqueue_style( 'pmh-admin', PMH_URL . 'admin/css/admin.css', array(), PMH_VERSION );
-		wp_enqueue_script( 'pmh-blank-filter', PMH_URL . 'admin/js/blank-filter.js', array(), PMH_VERSION, array( 'in_footer' => true ) );
-		wp_add_inline_script( 'pmh-blank-filter', 'window.pmhAssign = ' . wp_json_encode( self::inline_data( $product_id ) ) . ';', 'before' );
-	}
-
 	/**
 	 * Everything the preview needs, computed once at page load.
 	 */
-	private static function inline_data( int $product_id ): array {
+	public static function inline_data( int $product_id ): array {
 		$blanks = array();
-		$terms  = get_terms(
-			array(
-				'taxonomy'   => PMH_TAXONOMY,
-				'hide_empty' => false,
-			)
-		);
-		foreach ( is_wp_error( $terms ) ? array() : $terms as $term ) {
+		foreach ( PMH_Blank::all() as $term ) {
 			$data                      = PMH_Blank::get( $term->term_id );
 			$blanks[ $term->term_id ] = array(
 				'name'      => $term->name,

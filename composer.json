@@ -11,6 +11,6 @@
     },
     "scripts": {
         "test": "phpunit",
-        "lint": "for f in $(find . -name '*.php' -not -path './vendor/*'); do php -l $f || exit 1; done"
+        "lint": "for f in $(find . -name '*.php' -not -path './vendor/*' -not -path './node_modules/*'); do php -l $f || exit 1; done"
     }
 }

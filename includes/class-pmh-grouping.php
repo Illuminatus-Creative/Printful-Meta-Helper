@@ -15,14 +15,13 @@ defined( 'ABSPATH' ) || exit;
 
 final class PMH_Grouping {
 
-	private const SLUG   = 'pmh-blank-groups';
+	public const SLUG    = 'pmh-blank-groups';
 	private const ACTION = 'pmh_apply_groups';
 	private const NONCE  = 'pmh_groups_nonce';
 
 	public static function init(): void {
 		add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_apply' ) );
-		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 	}
 
 	public static function add_page(): void {
@@ -34,12 +33,6 @@ final class PMH_Grouping {
 			self::SLUG,
 			array( __CLASS__, 'render_page' )
 		);
-	}
-
-	public static function enqueue_assets( $hook_suffix ): void {
-		if ( 'product_page_' . self::SLUG === $hook_suffix ) {
-			wp_enqueue_style( 'pmh-admin', PMH_URL . 'admin/css/admin.css', array(), PMH_VERSION );
-		}
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -75,57 +68,80 @@ final class PMH_Grouping {
 			update_object_term_cache( $with_meta, 'product' );
 		}
 
-		$groups     = array();
+		$parsed     = array();
 		$unreadable = array();
-
 		foreach ( $with_meta as $product_id ) {
 			$product_id = (int) $product_id;
-			$parsed     = PMH_Importer::from_product_meta( $product_id );
-			if ( ! $parsed || ! $parsed['product'] ) {
+			$result     = PMH_Importer::from_product_meta( $product_id );
+			if ( ! $result || ! $result['product'] ) {
 				$unreadable[] = $product_id;
 				continue;
-			}
-			$signature = PMH_Size_Chart::signature( $parsed['product'] );
-			if ( ! isset( $groups[ $signature ] ) ) {
-				$groups[ $signature ] = array(
-					'chart'         => $parsed['product'],
-					'body_chart'    => $parsed['body'] ?: PMH_Size_Chart::empty_chart(),
-					'products'      => array(),
-					'blank_matches' => array(),
-				);
 			}
 			$blank = PMH_Blank::for_product( $product_id );
 			$cats  = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
 
-			$groups[ $signature ]['products'][ $product_id ] = array(
-				'title'    => get_the_title( $product_id ),
-				'blank_id' => $blank ? (int) $blank->term_id : 0,
-				'cats'     => is_wp_error( $cats ) ? array() : array_map( 'intval', $cats ),
+			$parsed[ $product_id ] = array(
+				'chart'      => $result['product'],
+				'body_chart' => $result['body'] ?: PMH_Size_Chart::empty_chart(),
+				'title'      => get_the_title( $product_id ),
+				'blank_id'   => $blank ? (int) $blank->term_id : 0,
+				'cats'       => is_wp_error( $cats ) ? array() : array_map( 'intval', $cats ),
 			);
 		}
 
-		// Blanks whose chart matches a group.
-		$blanks = get_terms(
-			array(
-				'taxonomy'   => PMH_TAXONOMY,
-				'hide_empty' => false,
-			)
+		$blank_charts = array();
+		foreach ( PMH_Blank::all() as $blank ) {
+			$blank_charts[ $blank->term_id ] = PMH_Blank::get( $blank->term_id )['chart'];
+		}
+
+		return array(
+			'groups'     => self::group_products( $parsed, $blank_charts ),
+			'no_meta'    => max( 0, $total - count( $with_meta ) ),
+			'unreadable' => $unreadable,
 		);
-		foreach ( is_wp_error( $blanks ) ? array() : $blanks as $blank ) {
-			$sig = PMH_Size_Chart::signature( PMH_Blank::get( $blank->term_id )['chart'] );
+	}
+
+	/**
+	 * Group parsed products by chart signature and attach matching blanks.
+	 * Pure: no WordPress calls, so it is unit-tested directly.
+	 *
+	 * @param array<int, array{chart: array, body_chart: array, title: string, blank_id: int, cats: int[]}> $parsed
+	 * @param array<int, array> $blank_charts term_id => chart.
+	 * @return array<string, array{chart: array, body_chart: array, products: array, blank_matches: int[]}>
+	 */
+	public static function group_products( array $parsed, array $blank_charts ): array {
+		$groups = array();
+		foreach ( $parsed as $product_id => $p ) {
+			$signature = PMH_Size_Chart::signature( $p['chart'] );
+			if ( '' === $signature ) {
+				continue;
+			}
+			if ( ! isset( $groups[ $signature ] ) ) {
+				$groups[ $signature ] = array(
+					'chart'         => PMH_Size_Chart::normalise( $p['chart'] ),
+					'body_chart'    => PMH_Size_Chart::normalise( $p['body_chart'] ),
+					'products'      => array(),
+					'blank_matches' => array(),
+				);
+			}
+			$groups[ $signature ]['products'][ (int) $product_id ] = array(
+				'title'    => $p['title'],
+				'blank_id' => (int) $p['blank_id'],
+				'cats'     => array_map( 'intval', $p['cats'] ),
+			);
+		}
+
+		foreach ( $blank_charts as $term_id => $chart ) {
+			$sig = PMH_Size_Chart::signature( $chart );
 			if ( '' !== $sig && isset( $groups[ $sig ] ) ) {
-				$groups[ $sig ]['blank_matches'][] = (int) $blank->term_id;
+				$groups[ $sig ]['blank_matches'][] = (int) $term_id;
 			}
 		}
 
 		// Largest groups first.
 		uasort( $groups, static fn( $a, $b ) => count( $b['products'] ) <=> count( $a['products'] ) );
 
-		return array(
-			'groups'     => $groups,
-			'no_meta'    => max( 0, $total - count( $with_meta ) ),
-			'unreadable' => $unreadable,
-		);
+		return $groups;
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -138,14 +154,7 @@ final class PMH_Grouping {
 		}
 
 		$scan   = self::scan();
-		$blanks = get_terms(
-			array(
-				'taxonomy'   => PMH_TAXONOMY,
-				'hide_empty' => false,
-				'orderby'    => 'name',
-			)
-		);
-		$blanks = is_wp_error( $blanks ) ? array() : $blanks;
+		$blanks = PMH_Blank::all();
 		$by_id  = array();
 		foreach ( $blanks as $b ) {
 			$by_id[ $b->term_id ] = $b;
@@ -154,7 +163,9 @@ final class PMH_Grouping {
 		echo '<div class="wrap pmh-groups">';
 		echo '<h1>' . esc_html__( 'Blank Groups', 'printful-meta-helper' ) . '</h1>';
 
-		self::render_result_notice();
+		if ( isset( $_GET['pmh_result'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			PMH_Notices::render( PMH_Notices::take( 'groups' ), false );
+		}
 
 		echo '<p>' . esc_html__( 'Products Printful has pushed carry their size chart. Products on the same garment carry the same chart, so they group together here. Assign each group to an existing blank or create one from its chart; the blank is created with the group’s chart, body chart and the union of the products’ categories, and stays fully editable.', 'printful-meta-helper' ) . '</p>';
 
@@ -279,24 +290,6 @@ final class PMH_Grouping {
 		echo '</div>';
 	}
 
-	private static function render_result_notice(): void {
-		if ( ! isset( $_GET['pmh_result'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			return;
-		}
-		$key    = 'pmh_groups_result_' . get_current_user_id();
-		$result = get_transient( $key );
-		delete_transient( $key );
-		if ( ! is_array( $result ) ) {
-			return;
-		}
-		foreach ( (array) ( $result['errors'] ?? array() ) as $text ) {
-			echo '<div class="notice notice-error"><p>' . esc_html( $text ) . '</p></div>';
-		}
-		if ( ! empty( $result['summary'] ) ) {
-			echo '<div class="notice notice-success"><p>' . esc_html( $result['summary'] ) . '</p></div>';
-		}
-	}
-
 	/* ------------------------------------------------------------------ */
 	/* Apply                                                              */
 	/* ------------------------------------------------------------------ */
@@ -366,19 +359,18 @@ final class PMH_Grouping {
 			}
 		}
 
-		set_transient(
-			'pmh_groups_result_' . get_current_user_id(),
+		PMH_Notices::set(
+			'groups',
 			array(
-				'summary' => sprintf(
+				sprintf(
 					/* translators: 1: blanks created, 2: products assigned, 3: products skipped */
 					__( '%1$d blanks created, %2$d products assigned, %3$d already-assigned products left alone.', 'printful-meta-helper' ),
 					$created,
 					$assigned,
 					$skipped
 				),
-				'errors'  => array_values( array_unique( $errors ) ),
 			),
-			120
+			$errors
 		);
 
 		wp_safe_redirect( add_query_arg( array( 'pmh_result' => 1 ), admin_url( 'edit.php?post_type=product&page=' . self::SLUG ) ) );

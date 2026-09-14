@@ -42,7 +42,7 @@ final class PMH_Shortcodes {
 			PMH_Blank::get( $blank->term_id ),
 			array(
 				'fields' => preg_split( '/\s*,\s*/', strtolower( (string) $atts['fields'] ), -1, PREG_SPLIT_NO_EMPTY ),
-				'labels' => self::truthy( $atts['labels'] ),
+				'labels' => PMH_Util::truthy( $atts['labels'] ),
 				'class'  => (string) $atts['class'],
 			)
 		);
@@ -105,8 +105,8 @@ final class PMH_Shortcodes {
 			$applied['chart'],
 			array(
 				'unit'   => 'cm' === strtolower( (string) $atts['unit'] ) ? 'cm' : 'in',
-				'toggle' => self::truthy( $atts['toggle'] ),
-				'note'   => self::truthy( $atts['note'] ),
+				'toggle' => PMH_Util::truthy( $atts['toggle'] ),
+				'note'   => PMH_Util::truthy( $atts['note'] ),
 				'table'  => $table,
 				'class'  => (string) $atts['class'],
 			)
@@ -129,20 +129,6 @@ final class PMH_Shortcodes {
 		if ( ! $id ) {
 			$id = (int) get_the_ID();
 		}
-		if ( ! $id ) {
-			return 0;
-		}
-
-		$post_type = get_post_type( $id );
-		if ( 'product_variation' === $post_type ) {
-			$id = (int) wp_get_post_parent_id( $id );
-		} elseif ( 'product' !== $post_type ) {
-			return 0;
-		}
-		return $id;
-	}
-
-	private static function truthy( $value ): bool {
-		return ! in_array( strtolower( trim( (string) $value ) ), array( '0', 'false', 'no', 'off', '' ), true );
+		return $id ? PMH_Util::resolve_product_id( $id ) : 0;
 	}
 }
