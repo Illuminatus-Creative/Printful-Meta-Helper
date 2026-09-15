@@ -2,9 +2,10 @@
 /**
  * Companion products: a unisex product and its women's-sizing twin (or
  * the reverse), linked one to one and two ways. The relationship is
- * product meta; the wording comes from each product's blank, so the
- * shortcode on a unisex product prints the unisex blank's fit label and
- * the women's blank's link text, and the reverse falls out automatically.
+ * product meta; the wording comes from the product's own blank: its fit
+ * label ("Unisex sizing.") and its link text ("Looking for women's
+ * sizes?"). The women's blank carries the reverse pair, so each side
+ * reads correctly without looking at the other blank.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -138,7 +139,73 @@ final class PMH_Companion {
 		}
 		$html .= '</select>';
 		$html .= '<p class="description">' . esc_html__( 'The unisex or women\'s twin of this product. Saving links both products; clear it to unlink both. [pmh_companion_link] renders the sentence.', 'printful-meta-helper' ) . '</p>';
+		$html .= self::status_html( $product_id );
 		return $html;
+	}
+
+	/**
+	 * What [pmh_companion_link] will print for this product as saved, or
+	 * why it prints nothing.
+	 */
+	public static function status_html( int $product_id ): string {
+		$status = self::status( $product_id );
+		if ( ! $status['companion'] && count( $status['problems'] ) === 1 ) {
+			return ''; // nothing set yet: the description already says what to do.
+		}
+		if ( $status['problems'] ) {
+			$html = '<p class="pmh-assign__warn">' . esc_html__( '[pmh_companion_link] renders nothing:', 'printful-meta-helper' ) . '</p><ul class="pmh-assign__problems">';
+			foreach ( $status['problems'] as $problem ) {
+				$html .= '<li>' . esc_html( $problem ) . '</li>';
+			}
+			return $html . '</ul>';
+		}
+		return '<p class="pmh-assign__ok">' . esc_html(
+			sprintf(
+				/* translators: 1: rendered sentence, 2: companion product title */
+				__( 'Renders: “%1$s” linking to %2$s.', 'printful-meta-helper' ),
+				trim( $status['fit_label'] . ' ' . $status['link_text'] ),
+				$status['companion_title']
+			)
+		) . '</p>';
+	}
+
+	/**
+	 * Everything the link needs, plus the reasons it would not render.
+	 * Used by link_html() and shown to editors under the companion field,
+	 * so a silent front end is never a mystery.
+	 *
+	 * @return array{companion: int, companion_title: string, url: string, fit_label: string, link_text: string, problems: string[]}
+	 */
+	public static function status( int $product_id ): array {
+		$companion = self::get( $product_id );
+		$own_blank = PMH_Blank::for_product( $product_id );
+		$own       = $own_blank ? PMH_Blank::get( $own_blank->term_id ) : PMH_Blank::defaults();
+		$problems  = array();
+
+		if ( ! $companion ) {
+			$problems[] = __( 'No companion product is set.', 'printful-meta-helper' );
+		} elseif ( 'publish' !== get_post_status( $companion ) ) {
+			$problems[] = __( 'The companion product is not published.', 'printful-meta-helper' );
+		}
+		if ( ! $own_blank ) {
+			$problems[] = __( 'This product has no blank, so there is no link text to use.', 'printful-meta-helper' );
+		} elseif ( '' === $own['link_text'] ) {
+			/* translators: %s: blank name */
+			$problems[] = sprintf( __( 'The blank “%s” has no companion link text. Set it on the blank screen.', 'printful-meta-helper' ), $own_blank->name );
+		}
+		$url = $companion ? (string) get_permalink( $companion ) : '';
+		if ( $companion && '' === $url ) {
+			$problems[] = __( 'The companion product has no permalink.', 'printful-meta-helper' );
+		}
+
+		return array(
+			'companion'       => $companion,
+			'companion_title' => $companion ? (string) get_the_title( $companion ) : '',
+			'url'             => $url,
+			'fit_label'       => $own['fit_label'],
+			'link_text'       => $own['link_text'],
+			'problems'        => $problems,
+		);
 	}
 
 	/**
@@ -152,25 +219,15 @@ final class PMH_Companion {
 	 * Inline, so the surrounding text block decides the paragraph styling.
 	 */
 	public static function link_html( int $product_id, string $extra_class = '' ): string {
-		$companion = self::get( $product_id );
-		if ( ! $companion || 'publish' !== get_post_status( $companion ) ) {
+		$status = self::status( $product_id );
+		if ( $status['problems'] ) {
 			return '';
 		}
-		$target_blank = PMH_Blank::for_product( $companion );
-		if ( ! $target_blank ) {
-			return '';
-		}
-		$link_text = PMH_Blank::get( $target_blank->term_id )['link_text'];
-		if ( '' === $link_text ) {
-			return '';
-		}
-		$url = get_permalink( $companion );
-		if ( ! $url ) {
-			return '';
-		}
-
 		$own_blank = PMH_Blank::for_product( $product_id );
-		$fit_label = $own_blank ? PMH_Blank::get( $own_blank->term_id )['fit_label'] : '';
+		$fit_label = $status['fit_label'];
+		$link_text = $status['link_text'];
+		$url       = $status['url'];
+		$companion = $status['companion'];
 
 		$classes = array( 'pmh-companion' );
 		if ( $own_blank ) {

@@ -11,8 +11,9 @@ final class CompanionTest extends TestCase {
 		PMH_Fake_WP::reset();
 		$this->unisex = PMH_Fake_WP::add_term( 'pmh_blank', 'Bella 3001', 30, 'bella-3001' );
 		$this->womens = PMH_Fake_WP::add_term( 'pmh_blank', 'Bella 6004', 31, 'bella-6004' );
-		PMH_Blank::update( $this->unisex->term_id, array( 'fit_label' => 'Unisex sizing.', 'link_text' => "Looking for men's/unisex sizes?" ) );
-		PMH_Blank::update( $this->womens->term_id, array( 'fit_label' => '', 'link_text' => "Looking for women\u{2019}s sizes?" ) );
+		// Each blank carries the sentence its own products show.
+		PMH_Blank::update( $this->unisex->term_id, array( 'fit_label' => 'Unisex sizing.', 'link_text' => "Looking for women\u{2019}s sizes?" ) );
+		PMH_Blank::update( $this->womens->term_id, array( 'fit_label' => '', 'link_text' => "Looking for men's/unisex sizes?" ) );
 		foreach ( array( 1, 2, 3 ) as $id ) {
 			PMH_Fake_WP::add_post( $id, 'product', array( 'title' => 'Product ' . $id ) );
 		}
@@ -125,12 +126,32 @@ final class CompanionTest extends TestCase {
 		self::assertSame( '', PMH_Companion::link_html( 1 ), 'companion not published' );
 		PMH_Fake_WP::$posts[2]['status'] = 'publish';
 
-		PMH_Blank::update( $this->womens->term_id, array( 'link_text' => '' ) );
-		self::assertSame( '', PMH_Companion::link_html( 1 ), 'companion blank has no link text' );
-		PMH_Blank::update( $this->womens->term_id, array( 'link_text' => 'x' ) );
+		PMH_Blank::update( $this->unisex->term_id, array( 'link_text' => '' ) );
+		self::assertSame( '', PMH_Companion::link_html( 1 ), 'own blank has no link text' );
+		self::assertNotSame( '', PMH_Companion::link_html( 2 ), 'the other side still renders from its own blank' );
+		PMH_Blank::update( $this->unisex->term_id, array( 'link_text' => 'x' ) );
 
-		PMH_Fake_WP::$object_terms[2] = array();
-		self::assertSame( '', PMH_Companion::link_html( 1 ), 'companion has no blank' );
+		PMH_Fake_WP::$object_terms[1] = array();
+		self::assertSame( '', PMH_Companion::link_html( 1 ), 'product has no blank' );
+	}
+
+	public function test_status_explains_why_nothing_renders(): void {
+		self::assertSame( '', PMH_Companion::status_html( 1 ), 'nothing set: the field description suffices' );
+
+		PMH_Companion::set( 1, 2 );
+		$ok = PMH_Companion::status_html( 1 );
+		self::assertStringContainsString( 'pmh-assign__ok', $ok );
+		self::assertStringContainsString( 'Renders: “Unisex sizing. Looking for women’s sizes?” linking to Product 2.', $ok );
+
+		PMH_Blank::update( $this->unisex->term_id, array( 'link_text' => '' ) );
+		$warn = PMH_Companion::status_html( 1 );
+		self::assertStringContainsString( '[pmh_companion_link] renders nothing:', $warn );
+		self::assertStringContainsString( 'The blank “Bella 3001” has no companion link text.', $warn );
+
+		PMH_Fake_WP::$posts[2]['status'] = 'draft';
+		self::assertStringContainsString( 'not published', PMH_Companion::status_html( 1 ) );
+
+		self::assertStringContainsString( 'pmh-assign__problems', PMH_Companion::render_field( 1 ), 'diagnostics sit under the field' );
 	}
 
 	public function test_shortcode_and_metabox_field(): void {

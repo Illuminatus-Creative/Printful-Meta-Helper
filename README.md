@@ -123,7 +123,13 @@ AJAX, so open the blank afterwards to see what was imported.
 
 `[pmh_materials]` renders a definition list of material (with colour
 exceptions as a sub-list), fabric weight, construction, care and
-disclaimers, skipping empty fields, for any blank kind. `[pmh_blank_name]`
+disclaimers, skipping empty fields, for any blank kind. Colour exceptions
+are limited to lines that name a colour the product is sold in, read from
+its colour variations the same way sizes are: a tee sold in Black and Navy
+shows no heather line, a product with no colour attribute shows every line,
+and `filter_colours="0"` turns the filter off. A line's colours are the
+words before "is"/"are", so write them as Printful does ("Sport Grey",
+"Heather colors", "Athletic and Black Heather"). `[pmh_blank_name]`
 is the blank's name as plain text for use inside a sentence. All three
 return an empty string when the product has no blank.
 
@@ -132,10 +138,11 @@ companion (a unisex tee and its women's-sizing twin). The link is set per
 product in the Blank box with WooCommerce's product search and is kept one
 to one and two ways: saving A with companion B also points B at A, and
 clears whatever B pointed at before, with a notice. The wording lives on
-the blanks: each blank has a **fit label** shown before the link on its own
-products ("Unisex sizing.") and a **link text** other products use to reach
-it ("Looking for women's sizes?"). Output is inline so the surrounding text
-block controls styling:
+the product's own blank: a **fit label** shown first ("Unisex sizing.") and a
+**companion link text** that is the link ("Looking for women's sizes?"). The
+women's blank carries the reverse pair. Under the companion field the
+product screen shows the sentence as it will print, or the reason nothing
+prints. Output is inline so the surrounding text block controls styling:
 
 ```
 <span class="pmh-companion pmh-companion--bella-3001">
@@ -145,7 +152,7 @@ block controls styling:
 ```
 
 Nothing renders when there is no companion, the companion is not published,
-or its blank has no link text.
+or this product's blank has no companion link text.
 
 Defaults to the product in the loop or the queried product. Renders the
 blank's garment chart (`table="body"` for body measurements) with one row per

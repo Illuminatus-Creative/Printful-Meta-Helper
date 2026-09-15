@@ -193,17 +193,27 @@ final class PMH_Renderer {
 	 *
 	 * @param WP_Term $blank Blank.
 	 * @param array   $data  PMH_Blank::get() result.
-	 * @param array   $opts  fields (string[]), labels (bool), class (string).
+	 * @param array   $opts  fields (string[]), labels (bool), class (string),
+	 *                       colours (string[]|null): the product's colour
+	 *                       names; when given, only colour exceptions that
+	 *                       name one of them render. null renders them all.
 	 */
 	public static function materials( WP_Term $blank, array $data, array $opts = array() ): string {
 		$opts = wp_parse_args(
 			$opts,
 			array(
-				'fields' => array( 'material', 'weight', 'construction', 'care', 'disclaimers' ),
-				'labels' => true,
-				'class'  => '',
+				'fields'  => array( 'material', 'weight', 'construction', 'care', 'disclaimers' ),
+				'labels'  => true,
+				'class'   => '',
+				'colours' => null,
 			)
 		);
+		if ( is_array( $opts['colours'] ) ) {
+			$data['material_exceptions'] = implode(
+				"\n",
+				self::exceptions_for_colours( PMH_Util::lines( (string) ( $data['material_exceptions'] ?? '' ) ), $opts['colours'] )
+			);
+		}
 
 		/**
 		 * Filter the labels shown next to each materials field.
@@ -277,6 +287,47 @@ final class PMH_Renderer {
 		}
 		$text = (string) ( $data[ self::MATERIAL_FIELDS[ $field ] ] ?? '' );
 		return 'weight' === $field ? esc_html( trim( $text ) ) : self::lines_value( $text );
+	}
+
+	/**
+	 * Keep the colour-exception lines that apply to the given colours.
+	 *
+	 * A line's subject is the text before "is" / "are" ("Athletic and Black
+	 * Heather", "Heather colors", "Sport Grey"), split on commas and "and"
+	 * with filler words removed. A line stays when any subject phrase
+	 * occurs, on word boundaries, inside one of the product's colour names:
+	 * "Heather" matches "Dark Heather"; "Black Heather" does not match
+	 * "Black". Lines with no recognisable subject stay, since dropping them
+	 * would hide information nobody can verify automatically.
+	 *
+	 * @param string[] $lines   Exception lines.
+	 * @param string[] $colours Product colour names.
+	 * @return string[]
+	 */
+	public static function exceptions_for_colours( array $lines, array $colours ): array {
+		$norm = static fn( string $s ): string => strtolower( trim( preg_replace( array( '/\bgray\b/i', '/\s+/u' ), array( 'grey', ' ' ), $s ) ) );
+
+		$colours = array_values( array_filter( array_map( $norm, $colours ) ) );
+		$keep    = array();
+		foreach ( $lines as $line ) {
+			$parts   = preg_split( '/\s+(?:is|are)\s+/iu', $line, 2 );
+			$subject = preg_replace( '/\b(?:colou?rs?|variants?|shades?|options?)\b/iu', '', (string) $parts[0] );
+			$phrases = array_values( array_filter( array_map( $norm, preg_split( '/\s*(?:,|&|\/|\band\b)\s*/iu', $subject ) ) ) );
+
+			if ( count( $parts ) < 2 || ! $phrases ) {
+				$keep[] = $line;
+				continue;
+			}
+			foreach ( $phrases as $phrase ) {
+				foreach ( $colours as $colour ) {
+					if ( preg_match( '/(?<![\p{L}\p{N}])' . preg_quote( $phrase, '/' ) . '(?![\p{L}\p{N}])/u', $colour ) ) {
+						$keep[] = $line;
+						continue 3;
+					}
+				}
+			}
+		}
+		return $keep;
 	}
 
 	private static function material_value( array $data ): string {

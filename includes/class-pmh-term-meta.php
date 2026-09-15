@@ -83,8 +83,8 @@ final class PMH_Term_Meta {
 			$spec( $chart, 'pmh_body_chart', __( 'Body chart (inches)', 'printful-meta-helper' ), self::textarea( 'pmh_body_chart', self::chart_json( $data['body_chart'] ), 8, '', 'code pmh-chart-json' ), __( 'Body measurements ("measure yourself"). Stored separately; rendered only when a shortcode asks for it.', 'printful-meta-helper' ), 'body_chart' ),
 			$spec( $chart, 'pmh_shortcodes', __( 'Shortcodes', 'printful-meta-helper' ), PMH_Admin_Help::shortcodes_box() ),
 
-			$spec( $companion, 'pmh_fit_label', __( 'Fit label', 'printful-meta-helper' ), self::text( 'pmh_fit_label', $data['fit_label'], __( 'Unisex sizing.', 'printful-meta-helper' ) ), __( 'Shown before the link on this blank\'s own products by [pmh_companion_link]. Leave empty to show the link alone.', 'printful-meta-helper' ), 'fit_label' ),
-			$spec( $companion, 'pmh_link_text', __( 'Link text to reach this blank', 'printful-meta-helper' ), self::text( 'pmh_link_text', $data['link_text'], __( 'Looking for women’s sizes?', 'printful-meta-helper' ) ), __( 'The link text other products use to point at a companion product on this blank. Empty means no link renders towards this blank.', 'printful-meta-helper' ), 'link_text' ),
+			$spec( $companion, 'pmh_fit_label', __( 'Fit label', 'printful-meta-helper' ), self::text( 'pmh_fit_label', $data['fit_label'], __( 'Unisex sizing.', 'printful-meta-helper' ) ), __( 'Shown before the link on this blank\'s products by [pmh_companion_link]. Leave empty to show the link alone.', 'printful-meta-helper' ), 'fit_label' ),
+			$spec( $companion, 'pmh_link_text', __( 'Companion link text', 'printful-meta-helper' ), self::text( 'pmh_link_text', $data['link_text'], __( 'Looking for women’s sizes?', 'printful-meta-helper' ) ), __( 'The link shown on this blank\'s products, pointing at their companion. Empty means [pmh_companion_link] renders nothing on them.', 'printful-meta-helper' ), 'link_text' ),
 
 			$spec( $parked, 'pmh_handling', __( 'Handling time (days)', 'printful-meta-helper' ), self::handling_inputs( $data ), __( 'Reserved for later feed work. Leave empty.', 'printful-meta-helper' ), 'handling' ),
 		);

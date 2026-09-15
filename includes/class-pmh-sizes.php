@@ -34,28 +34,64 @@ final class PMH_Sizes {
 	/** A size attribute exists but no visible variation carries a value. */
 	public const NONE = 'none';
 
+	/** Words that identify the size attribute, and the colour attribute. */
+	private const SIZE_NEEDLES   = array( 'size' );
+	private const COLOUR_NEEDLES = array( 'colour', 'color' );
+
 	/**
+	 * Sizes the product can be bought in.
+	 *
 	 * @return array{state: string, sizes: string[], attribute: string}
 	 */
 	public static function for_product( int $product_id ): array {
+		$values = self::attribute_values( $product_id, 'size', self::SIZE_NEEDLES );
+		$sizes  = array_values( array_unique( array_filter( array_map( array( PMH_Size_Chart::class, 'normalise_size' ), $values['values'] ) ) ) );
+		return array(
+			'state'     => self::UNFILTERED === $values['state'] ? self::UNFILTERED : ( $sizes ? self::SIZES : self::NONE ),
+			'sizes'     => $sizes,
+			'attribute' => $values['attribute'],
+		);
+	}
+
+	/**
+	 * Colours the product can be bought in, as attribute names ("Sport Grey").
+	 * UNFILTERED when the product has no colour attribute.
+	 *
+	 * @return array{state: string, colours: string[], attribute: string}
+	 */
+	public static function colours_for_product( int $product_id ): array {
+		$values = self::attribute_values( $product_id, 'colour', self::COLOUR_NEEDLES );
+		return array(
+			'state'     => $values['state'],
+			'colours'   => $values['values'],
+			'attribute' => $values['attribute'],
+		);
+	}
+
+	/**
+	 * Distinct values of one variation attribute across the product's
+	 * visible variations, cached per product and attribute group.
+	 *
+	 * @param string   $group   Cache tag and filter suffix: 'size' or 'colour'.
+	 * @param string[] $needles Words that identify the attribute by name or label.
+	 * @return array{state: string, values: string[], attribute: string}
+	 */
+	private static function attribute_values( int $product_id, string $group, array $needles ): array {
 		$product = wc_get_product( $product_id );
 		if ( $product && $product->is_type( 'variation' ) ) {
 			$product_id = (int) $product->get_parent_id();
 			$product    = wc_get_product( $product_id );
 		}
 
-		$key    = self::cache_key( $product_id );
+		$key    = self::cache_key( $product_id, $group );
 		$cached = $key ? wp_cache_get( $key, self::CACHE_GROUP ) : false;
-		if ( is_array( $cached ) ) {
-			return self::filtered( $cached, $product );
+		if ( ! is_array( $cached ) ) {
+			$cached = self::compute( $product, $group, $needles );
+			if ( $key ) {
+				wp_cache_set( $key, $cached, self::CACHE_GROUP );
+			}
 		}
-
-		$result = self::compute( $product );
-
-		if ( $key ) {
-			wp_cache_set( $key, $result, self::CACHE_GROUP );
-		}
-		return self::filtered( $result, $product );
+		return self::filtered( $cached, $product, $group );
 	}
 
 	/**
@@ -70,9 +106,11 @@ final class PMH_Sizes {
 		} elseif ( 'product_variation' === get_post_type( $id ) ) {
 			$id = (int) wp_get_post_parent_id( $id );
 		}
-		$key = self::cache_key( $id );
-		if ( $key ) {
-			wp_cache_delete( $key, self::CACHE_GROUP );
+		foreach ( array( 'size', 'colour' ) as $group ) {
+			$key = self::cache_key( $id, $group );
+			if ( $key ) {
+				wp_cache_delete( $key, self::CACHE_GROUP );
+			}
 		}
 	}
 
@@ -82,45 +120,56 @@ final class PMH_Sizes {
 	 * changes the visible children without touching the product). Empty
 	 * when WooCommerce's cache helper is unavailable.
 	 */
-	private static function cache_key( int $product_id ): string {
+	private static function cache_key( int $product_id, string $group = 'size' ): string {
 		if ( $product_id <= 0 || ! class_exists( 'WC_Cache_Helper' ) ) {
 			return '';
 		}
 		$hide = 'yes' === get_option( 'woocommerce_hide_out_of_stock_items' ) ? '1' : '0';
-		return WC_Cache_Helper::get_cache_prefix( 'product_' . $product_id ) . 'sizes_' . $product_id . '_' . $hide;
+		return WC_Cache_Helper::get_cache_prefix( 'product_' . $product_id ) . $group . 's_' . $product_id . '_' . $hide;
 	}
 
 	/**
-	 * The pmh_product_sizes filter runs on every call, never on the cached
-	 * value, so a filter that depends on request context keeps working.
+	 * The pmh_product_sizes / pmh_product_colours filter runs on every call,
+	 * never on the cached value, so a filter that depends on request context
+	 * keeps working.
 	 */
-	private static function filtered( array $result, $product ): array {
+	private static function filtered( array $result, $product, string $group ): array {
 		if ( self::SIZES !== $result['state'] || ! $product ) {
 			return $result;
 		}
-		$sizes           = (array) apply_filters( 'pmh_product_sizes', $result['sizes'], $product, $result['attribute'] );
-		$result['sizes'] = array_values( $sizes );
-		$result['state'] = $sizes ? self::SIZES : self::NONE;
+		/**
+		 * Filter the purchasable values read from a product's variations.
+		 * pmh_product_sizes receives canonical size labels;
+		 * pmh_product_colours receives colour attribute names.
+		 *
+		 * @param string[]   $values    Values.
+		 * @param WC_Product $product   Parent product.
+		 * @param string     $attribute Attribute name used ('pa_size', 'color').
+		 */
+		$values           = (array) apply_filters( 'pmh_product_' . $group . 's', $result['values'], $product, $result['attribute'] );
+		$result['values'] = array_values( $values );
+		$result['state']  = $values ? self::SIZES : self::NONE;
 		return $result;
 	}
 
 	/**
-	 * The uncached computation: read the size attribute from every visible
+	 * The uncached computation: read one attribute from every visible
 	 * variation.
 	 *
 	 * @param WC_Product|false|null $product Parent product.
+	 * @param string[]              $needles Words identifying the attribute.
 	 */
-	private static function compute( $product ): array {
+	private static function compute( $product, string $group, array $needles ): array {
 		$result = array(
 			'state'     => self::UNFILTERED,
-			'sizes'     => array(),
+			'values'    => array(),
 			'attribute' => '',
 		);
 		if ( ! $product || ! $product->is_type( 'variable' ) ) {
 			return $result;
 		}
 
-		$attribute = self::find_size_attribute( $product );
+		$attribute = self::find_attribute( $product, $group, $needles );
 		if ( '' === $attribute ) {
 			return $result;
 		}
@@ -139,33 +188,34 @@ final class PMH_Sizes {
 		foreach ( $children as $child_id ) {
 			$raw = get_post_meta( $child_id, $meta_key, true );
 			if ( '' === $raw || null === $raw ) {
-				// "Any size" variation: every size is purchasable.
+				// "Any …" variation: every value is purchasable.
 				return $result;
 			}
 			$raws[ (string) $raw ] = true;
 		}
 
-		$sizes = array();
-		foreach ( self::resolve_values( $attribute, array_keys( $raws ) ) as $name ) {
-			$sizes[] = PMH_Size_Chart::normalise_size( $name );
-		}
-		/*
-		 * Filter documented in filtered(): pmh_product_sizes( $sizes, $product,
-		 * $attribute ) adjusts the purchasable sizes read from the variations.
-		 */
-		$sizes = array_values( array_unique( array_filter( $sizes ) ) );
+		$values = array_values( array_unique( array_filter( array_map( 'trim', self::resolve_values( $attribute, array_keys( $raws ) ) ) ) ) );
 
-		$result['sizes'] = $sizes;
-		$result['state'] = $sizes ? self::SIZES : self::NONE;
+		$result['values'] = $values;
+		$result['state']  = $values ? self::SIZES : self::NONE;
 		return $result;
 	}
 
 	/**
 	 * Name of the variation attribute that holds sizes: 'pa_size' for a
 	 * global attribute, the sanitised label ('size') for a custom one.
-	 * Matches on "size" in the attribute name or its label.
 	 */
 	public static function find_size_attribute( WC_Product $product ): string {
+		return self::find_attribute( $product, 'size', self::SIZE_NEEDLES );
+	}
+
+	/**
+	 * The variation attribute whose name or label contains one of the
+	 * needles. Filterable as pmh_size_attribute / pmh_colour_attribute.
+	 *
+	 * @param string[] $needles Case-insensitive words to look for.
+	 */
+	private static function find_attribute( WC_Product $product, string $group, array $needles ): string {
 		$found = '';
 		foreach ( $product->get_attributes() as $attribute ) {
 			if ( ! $attribute instanceof WC_Product_Attribute || ! $attribute->get_variation() ) {
@@ -173,19 +223,21 @@ final class PMH_Sizes {
 			}
 			$name  = $attribute->get_name();
 			$label = wc_attribute_label( $name, $product );
-			if ( false !== stripos( $name, 'size' ) || false !== stripos( $label, 'size' ) ) {
-				$found = $attribute->is_taxonomy() ? $name : sanitize_title( $name );
-				break;
+			foreach ( $needles as $needle ) {
+				if ( false !== stripos( $name, $needle ) || false !== stripos( $label, $needle ) ) {
+					$found = $attribute->is_taxonomy() ? $name : sanitize_title( $name );
+					break 2;
+				}
 			}
 		}
 
 		/**
-		 * Filter which variation attribute is treated as the size.
+		 * Filter which variation attribute is treated as the size (or colour).
 		 *
 		 * @param string     $found   Attribute name, '' when none matched.
 		 * @param WC_Product $product Parent product.
 		 */
-		return (string) apply_filters( 'pmh_size_attribute', $found, $product );
+		return (string) apply_filters( 'pmh_' . $group . '_attribute', $found, $product );
 	}
 
 	/**

@@ -26,15 +26,19 @@ final class PMH_Shortcodes {
 	}
 
 	/**
-	 * [pmh_materials product_id="" fields="material,weight,construction,care,disclaimers" labels="1" class=""]
+	 * [pmh_materials product_id="" fields="material,weight,construction,care,disclaimers" labels="1" filter_colours="1" class=""]
+	 *
+	 * Colour exceptions are limited to the colours the product is sold in;
+	 * filter_colours="0" shows every exception on the blank.
 	 */
 	public static function materials( $atts ): string {
 		$atts = shortcode_atts(
 			array(
-				'product_id' => 0,
-				'fields'     => 'material,weight,construction,care,disclaimers',
-				'labels'     => '1',
-				'class'      => '',
+				'product_id'     => 0,
+				'fields'         => 'material,weight,construction,care,disclaimers',
+				'labels'         => '1',
+				'filter_colours' => '1',
+				'class'          => '',
 			),
 			$atts,
 			'pmh_materials'
@@ -48,13 +52,21 @@ final class PMH_Shortcodes {
 
 		PMH_Renderer::enqueue_assets();
 
+		$colours = null;
+		if ( PMH_Util::truthy( $atts['filter_colours'] ) ) {
+			$found = PMH_Sizes::colours_for_product( $product_id );
+			// No colour attribute: nothing to filter by, show every exception.
+			$colours = PMH_Sizes::UNFILTERED === $found['state'] ? null : $found['colours'];
+		}
+
 		return PMH_Renderer::materials(
 			$blank,
 			PMH_Blank::get( $blank->term_id ),
 			array(
-				'fields' => preg_split( '/\s*,\s*/', strtolower( (string) $atts['fields'] ), -1, PREG_SPLIT_NO_EMPTY ),
-				'labels' => PMH_Util::truthy( $atts['labels'] ),
-				'class'  => (string) $atts['class'],
+				'fields'  => preg_split( '/\s*,\s*/', strtolower( (string) $atts['fields'] ), -1, PREG_SPLIT_NO_EMPTY ),
+				'labels'  => PMH_Util::truthy( $atts['labels'] ),
+				'class'   => (string) $atts['class'],
+				'colours' => $colours,
 			)
 		);
 	}
