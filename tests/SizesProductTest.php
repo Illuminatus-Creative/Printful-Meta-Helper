@@ -154,6 +154,15 @@ final class SizesProductTest extends TestCase {
 		self::assertNotContains( 'S', PMH_Sizes::for_product( 1 )['sizes'] );
 	}
 
+	public function test_flush_accepts_a_product_object_and_clears_both_groups(): void {
+		pmh_fake_variable_product( 1, array( 10 => 's' ), 'pa_size', array(), array( 10 => 'Black' ) );
+		PMH_Sizes::for_product( 1 );
+		PMH_Sizes::colours_for_product( 1 );
+		self::assertCount( 2, PMH_Fake_WP::$object_cache['pmh_sizes'] ?? array() );
+		PMH_Sizes::flush_for_product( PMH_Fake_WC::$products[10] ); // a variation object, as the stock hooks pass
+		self::assertSame( array(), PMH_Fake_WP::$object_cache['pmh_sizes'] ?? array() );
+	}
+
 	public function test_hide_out_of_stock_setting_is_part_of_the_key(): void {
 		$this->forty_variation_product();
 		PMH_Sizes::for_product( 1 );

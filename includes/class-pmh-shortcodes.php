@@ -59,7 +59,7 @@ final class PMH_Shortcodes {
 			$colours = PMH_Sizes::UNFILTERED === $found['state'] ? null : $found['colours'];
 		}
 
-		return PMH_Renderer::materials(
+		return PMH_Materials::materials(
 			$blank,
 			PMH_Blank::get( $blank->term_id ),
 			array(

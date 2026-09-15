@@ -19,7 +19,7 @@ final class MaterialsRendererTest extends TestCase {
 	}
 
 	public function test_markup_contract(): void {
-		$html = PMH_Renderer::materials( pmh_test_blank(), self::data() );
+		$html = PMH_Materials::materials( pmh_test_blank(), self::data() );
 
 		self::assertStringStartsWith( '<div class="pmh-materials pmh-materials--gildan-5000" data-pmh-blank="gildan-5000"><dl class="pmh-materials__list">', $html );
 		self::assertStringContainsString( '<div class="pmh-materials__item pmh-materials__item--material"><dt class="pmh-materials__label">Material</dt><dd class="pmh-materials__value"><span class="pmh-materials__base">100% cotton</span><ul class="pmh-materials__exceptions"><li>Sport Grey is 90% cotton, 10% polyester</li><li>Heather colors are 50% cotton, 50% polyester</li></ul></dd></div>', $html );
@@ -32,7 +32,7 @@ final class MaterialsRendererTest extends TestCase {
 	}
 
 	public function test_field_selection_and_no_labels(): void {
-		$html = PMH_Renderer::materials(
+		$html = PMH_Materials::materials(
 			pmh_test_blank(),
 			self::data(),
 			array(
@@ -57,11 +57,11 @@ final class MaterialsRendererTest extends TestCase {
 				'disclaimers'         => '',
 			)
 		);
-		self::assertSame( '', PMH_Renderer::materials( pmh_test_blank(), $empty ) );
+		self::assertSame( '', PMH_Materials::materials( pmh_test_blank(), $empty ) );
 	}
 
 	public function test_single_line_field_is_plain_text(): void {
-		$html = PMH_Renderer::materials( pmh_test_blank(), self::data( array( 'construction' => 'Tubular fabric' ) ), array( 'fields' => array( 'construction' ) ) );
+		$html = PMH_Materials::materials( pmh_test_blank(), self::data( array( 'construction' => 'Tubular fabric' ) ), array( 'fields' => array( 'construction' ) ) );
 		self::assertStringContainsString( '<dd class="pmh-materials__value">Tubular fabric</dd>', $html );
 	}
 }

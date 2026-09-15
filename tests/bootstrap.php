@@ -41,10 +41,11 @@ function pmh_test_chart(): array {
  * entry of $sizes (child id => raw attribute meta value), on the given
  * attributes. Registers the pa_size terms S…5XL once.
  *
- * @param array<int, ?string> $sizes  child id => value; null: no meta row.
+ * @param array<int, ?string> $sizes     child id => value; null: no meta row.
  * @param string              $attribute 'pa_size' (global) or a custom label.
+ * @param array<int, string>  $colours   child id => colour name; adds a custom Color attribute.
  */
-function pmh_fake_variable_product( int $id, array $sizes, string $attribute = 'pa_size', array $extra_attributes = array() ): void {
+function pmh_fake_variable_product( int $id, array $sizes, string $attribute = 'pa_size', array $extra_attributes = array(), array $colours = array() ): void {
 	static $terms_seeded = false;
 	if ( ! $terms_seeded ) {
 		foreach ( array( 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL' ) as $i => $size ) {
@@ -65,6 +66,13 @@ function pmh_fake_variable_product( int $id, array $sizes, string $attribute = '
 		PMH_Fake_WC::$products[ $cid ] = new PMH_Fake_Variation( $cid, $id );
 		if ( null !== $raw ) {
 			PMH_Fake_WP::$post_meta[ $cid ][ $meta_key ] = $raw;
+		}
+	}
+	// Optional custom "Color" attribute: child id => colour name.
+	if ( $colours ) {
+		$extra_attributes[] = new PMH_Fake_Attribute( 'Color', true );
+		foreach ( $colours as $cid => $colour ) {
+			PMH_Fake_WP::$post_meta[ $cid ]['attribute_color'] = $colour;
 		}
 	}
 	$attributes = array_merge( array( new PMH_Fake_Attribute( $attribute, true ) ), $extra_attributes );

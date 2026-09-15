@@ -242,6 +242,8 @@ Groups scan primes product meta 200 products per query.
 - No page builder is referenced anywhere in the code.
 - Classes autoload from `includes/class-pmh-{name}.php`; new classes need
   no `require`.
-- `PMH_Blank` is the only reader and writer of term meta. `PMH_Util` holds
-  the shared helpers, `PMH_Notices` the cross-redirect notices, and
-  `PMH_Admin_Assets` every admin enqueue.
+- `PMH_Blank` is the only reader and writer of term meta. `PMH_Renderer`
+  renders the size chart and `PMH_Materials` the materials list with the
+  per-product colour filters. `PMH_Util` holds the shared helpers,
+  `PMH_Notices` the cross-redirect notices, and `PMH_Admin_Assets` every
+  admin enqueue.
