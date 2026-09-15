@@ -50,6 +50,8 @@ final class PMH_Fake_WP {
 		self::$is_admin     = false;
 		$_GET               = array();
 		PMH_Fake_Cache_Helper::$prefixes = array();
+		PMH_Fake_WC::$singular   = '';
+		PMH_Fake_WC::$queried_id = 1;
 		self::$set_calls    = array();
 		self::$can          = true;
 		self::$can_callback = null;

@@ -86,6 +86,22 @@ final class CompanionTest extends TestCase {
 		$_POST = array();
 	}
 
+	public function test_notices_render_only_on_product_screens(): void {
+		PMH_Notices::set( 'companion', array( 'Moved' ), array() );
+		$screen            = new PMH_Fake_Screen();
+		$screen->post_type = 'page';
+		PMH_Fake_WP::$screen = $screen;
+		ob_start();
+		PMH_Companion::render_notices();
+		self::assertSame( '', ob_get_clean(), 'kept for the product screen' );
+
+		$screen->post_type = 'product';
+		ob_start();
+		PMH_Companion::render_notices();
+		self::assertStringContainsString( 'Moved', ob_get_clean() );
+		self::assertNull( PMH_Notices::take( 'companion' ), 'consumed' );
+	}
+
 	public function test_link_html_both_directions(): void {
 		PMH_Companion::set( 1, 2 );
 		$from_unisex = PMH_Companion::link_html( 1 );

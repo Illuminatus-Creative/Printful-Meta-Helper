@@ -11,26 +11,23 @@ final class SizesProductTest extends TestCase {
 	protected function setUp(): void {
 		PMH_Fake_WP::reset();
 		PMH_Fake_WC::$products = array();
-		foreach ( array( 'S', 'M', 'L', 'XL', '2XL' ) as $i => $size ) {
-			PMH_Fake_WP::add_term( 'pa_size', $size, 500 + $i, strtolower( $size ) );
-		}
-		PMH_Fake_WP::add_post( 1 );
 	}
 
-	/** @param array<int, ?string> $sizes child id => raw meta value (null: no meta row) */
-	private function product( array $sizes, array $attributes, string $meta_key = 'attribute_pa_size' ): void {
-		foreach ( $sizes as $cid => $raw ) {
-			PMH_Fake_WP::add_post( $cid, 'product_variation', array( 'post_parent' => 1 ) );
-			PMH_Fake_WC::$products[ $cid ] = new PMH_Fake_Variation( $cid, 1 );
-			if ( null !== $raw ) {
-				PMH_Fake_WP::$post_meta[ $cid ][ $meta_key ] = $raw;
-			}
+	/**
+	 * @param array<int, ?string>  $sizes      child id => raw meta value (null: no meta row)
+	 * @param PMH_Fake_Attribute[] $attributes First is the one the sizes live on.
+	 */
+	private function product( array $sizes, array $attributes ): void {
+		$first = array_shift( $attributes );
+		pmh_fake_variable_product( 1, $sizes, $first ? $first->get_name() : 'pa_size', $attributes );
+		if ( ! $first || ! $first->get_variation() ) {
+			// The factory always marks the first attribute "used for variations"; these cases need otherwise.
+			PMH_Fake_WC::$products[1] = new PMH_Fake_Variable( 1, array_keys( $sizes ), $first ? array_merge( array( $first ), $attributes ) : array() );
 		}
-		PMH_Fake_WC::$products[1] = new PMH_Fake_Variable( 1, array_keys( $sizes ), $attributes );
 	}
 
 	public function test_global_attribute_slugs_resolve_to_names_and_dedupe(): void {
-		$this->product( array( 10 => 's', 11 => 'm', 12 => 's', 13 => '2xl' ), array( new PMH_Fake_Attribute( 'pa_color', true ), new PMH_Fake_Attribute( 'pa_size', true ) ) );
+		$this->product( array( 10 => 's', 11 => 'm', 12 => 's', 13 => '2xl' ), array( new PMH_Fake_Attribute( 'pa_size', true ), new PMH_Fake_Attribute( 'pa_color', true ) ) );
 		$r = PMH_Sizes::for_product( 1 );
 		self::assertSame( PMH_Sizes::SIZES, $r['state'] );
 		self::assertSame( array( 'S', 'M', '2XL' ), $r['sizes'] );
@@ -38,7 +35,7 @@ final class SizesProductTest extends TestCase {
 	}
 
 	public function test_custom_attribute_matched_by_label_and_aliased(): void {
-		$this->product( array( 10 => 'XXL', 11 => 'Small ' ), array( new PMH_Fake_Attribute( 'Size', true ) ), 'attribute_size' );
+		$this->product( array( 10 => 'XXL', 11 => 'Small ' ), array( new PMH_Fake_Attribute( 'Size', true ) ) );
 		$r = PMH_Sizes::for_product( 1 );
 		self::assertSame( array( '2XL', 'SMALL' ), $r['sizes'] );
 		self::assertSame( 'size', $r['attribute'] );
@@ -50,7 +47,7 @@ final class SizesProductTest extends TestCase {
 	}
 
 	public function test_no_size_attribute_is_unfiltered(): void {
-		$this->product( array( 10 => 'red' ), array( new PMH_Fake_Attribute( 'pa_color', true ) ), 'attribute_pa_color' );
+		$this->product( array( 10 => 'red' ), array( new PMH_Fake_Attribute( 'pa_color', true ) ) );
 		self::assertSame( PMH_Sizes::UNFILTERED, PMH_Sizes::for_product( 1 )['state'] );
 	}
 
@@ -91,7 +88,7 @@ final class SizesProductTest extends TestCase {
 	}
 
 	public function test_custom_attribute_values_need_no_term_query(): void {
-		$this->product( array( 10 => 'M', 11 => 'L' ), array( new PMH_Fake_Attribute( 'Size', true ) ), 'attribute_size' );
+		$this->product( array( 10 => 'M', 11 => 'L' ), array( new PMH_Fake_Attribute( 'Size', true ) ) );
 		PMH_Fake_WP::$calls = array();
 		PMH_Sizes::for_product( 1 );
 		self::assertArrayNotHasKey( 'get_terms', PMH_Fake_WP::$calls );

@@ -272,42 +272,34 @@ final class PMH_Term_Meta {
 	}
 
 	/**
-	 * A pasted Printful paragraph overrides the individual fields.
+	 * Every free-text field, sanitised by kind. A pasted Printful paragraph
+	 * overrides the materials fields it can fill.
 	 */
 	private static function collect_materials( array $post, array &$messages, array &$errors ): array {
 		$paste = isset( $post['pmh_materials_paste'] ) ? trim( (string) $post['pmh_materials_paste'] ) : '';
 		if ( '' !== $paste ) {
-			$split = PMH_Importer::materials_from_text( $paste );
-			if ( '' === $split['material_solid'] && '' === $split['construction'] && '' === $split['fabric_weight'] && '' === $split['disclaimers'] ) {
+			$split  = PMH_Importer::materials_from_text( $paste );
+			$filled = array_filter( array_intersect_key( $split, array_flip( PMH_Blank::PASTE_FIELDS ) ), static fn( $v ) => '' !== $v );
+			if ( ! $filled ) {
 				$errors[] = sprintf(
 					/* translators: %d: number of list items found */
 					__( 'Materials paste: nothing usable in the pasted text (%d list items read). Paste one item per line; bullets are optional. Fields left unchanged.', 'printful-meta-helper' ),
 					$split['lines']
 				);
 			} else {
-				$post       = array_merge(
-					$post,
-					array(
-						'pmh_material_solid'      => $split['material_solid'],
-						'pmh_material_exceptions' => $split['material_exceptions'],
-						'pmh_fabric_weight'       => $split['fabric_weight'],
-						'pmh_construction'        => $split['construction'],
-						'pmh_disclaimers'         => $split['disclaimers'],
-					)
-				);
+				foreach ( PMH_Blank::PASTE_FIELDS as $field ) {
+					$post[ 'pmh_' . $field ] = $split[ $field ];
+				}
 				$messages[] = __( 'Materials imported from the pasted paragraph.', 'printful-meta-helper' );
 			}
 		}
-		return array(
-			'material_solid'      => sanitize_text_field( (string) ( $post['pmh_material_solid'] ?? '' ) ),
-			'material_exceptions' => self::sanitise_lines( (string) ( $post['pmh_material_exceptions'] ?? '' ) ),
-			'fabric_weight'       => sanitize_text_field( (string) ( $post['pmh_fabric_weight'] ?? '' ) ),
-			'construction'        => self::sanitise_lines( (string) ( $post['pmh_construction'] ?? '' ) ),
-			'care'                => self::sanitise_lines( (string) ( $post['pmh_care'] ?? '' ) ),
-			'disclaimers'         => self::sanitise_lines( (string) ( $post['pmh_disclaimers'] ?? '' ) ),
-			'fit_label'           => sanitize_text_field( (string) ( $post['pmh_fit_label'] ?? '' ) ),
-			'link_text'           => sanitize_text_field( (string) ( $post['pmh_link_text'] ?? '' ) ),
-		);
+
+		$data = array();
+		foreach ( PMH_Blank::TEXT_FIELDS as $field => $kind ) {
+			$raw            = (string) ( $post[ 'pmh_' . $field ] ?? '' );
+			$data[ $field ] = 'lines' === $kind ? self::sanitise_lines( $raw ) : sanitize_text_field( $raw );
+		}
+		return $data;
 	}
 
 	/**

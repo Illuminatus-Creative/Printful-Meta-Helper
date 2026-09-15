@@ -219,26 +219,7 @@ final class PMH_Renderer {
 		$items = '';
 		foreach ( (array) $opts['fields'] as $field ) {
 			$field = trim( (string) $field );
-			$value = '';
-			switch ( $field ) {
-				case 'material':
-					$value = self::material_value( $data );
-					break;
-				case 'weight':
-					$value = '' !== $data['fabric_weight'] ? esc_html( $data['fabric_weight'] ) : '';
-					break;
-				case 'construction':
-					$value = self::lines_value( $data['construction'] );
-					break;
-				case 'care':
-					$value = self::lines_value( $data['care'] );
-					break;
-				case 'disclaimers':
-					$value = self::lines_value( (string) ( $data['disclaimers'] ?? '' ) );
-					break;
-				default:
-					continue 2;
-			}
+			$value = self::materials_value( $field, $data );
 			if ( '' === $value ) {
 				continue;
 			}
@@ -269,9 +250,32 @@ final class PMH_Renderer {
 		return (string) apply_filters( 'pmh_materials_html', $html, $blank, $data, $opts );
 	}
 
+	/** Shortcode field name => blank data key, for the plain fields. */
+	private const MATERIAL_FIELDS = array(
+		'weight'       => 'fabric_weight',
+		'construction' => 'construction',
+		'care'         => 'care',
+		'disclaimers'  => 'disclaimers',
+	);
+
+	/**
+	 * Escaped value for one materials field, or '' to skip it. Unknown
+	 * field names skip too.
+	 */
+	private static function materials_value( string $field, array $data ): string {
+		if ( 'material' === $field ) {
+			return self::material_value( $data );
+		}
+		if ( ! isset( self::MATERIAL_FIELDS[ $field ] ) ) {
+			return '';
+		}
+		$text = (string) ( $data[ self::MATERIAL_FIELDS[ $field ] ] ?? '' );
+		return 'weight' === $field ? esc_html( trim( $text ) ) : self::lines_value( $text );
+	}
+
 	private static function material_value( array $data ): string {
-		$base       = trim( (string) $data['material_solid'] );
-		$exceptions = PMH_Util::lines( (string) $data['material_exceptions'] );
+		$base       = trim( (string) ( $data['material_solid'] ?? '' ) );
+		$exceptions = PMH_Util::lines( (string) ( $data['material_exceptions'] ?? '' ) );
 		if ( '' === $base && ! $exceptions ) {
 			return '';
 		}

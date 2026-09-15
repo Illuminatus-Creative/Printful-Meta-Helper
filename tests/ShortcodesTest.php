@@ -24,18 +24,7 @@ final class ShortcodesTest extends TestCase {
 				'fabric_weight'  => '5.3 oz',
 			)
 		);
-		foreach ( array( 'S', 'M', 'L' ) as $i => $size ) {
-			PMH_Fake_WP::add_term( 'pa_size', $size, 500 + $i, strtolower( $size ) );
-		}
-		PMH_Fake_WP::add_post( 1 );
-		$children = array();
-		foreach ( array( 10 => 's', 11 => 'm', 12 => 'l' ) as $cid => $slug ) {
-			PMH_Fake_WP::add_post( $cid, 'product_variation', array( 'post_parent' => 1 ) );
-			PMH_Fake_WP::$post_meta[ $cid ]['attribute_pa_size'] = $slug;
-			PMH_Fake_WC::$products[ $cid ]                       = new PMH_Fake_Variation( $cid, 1 );
-			$children[]                                          = $cid;
-		}
-		PMH_Fake_WC::$products[1] = new PMH_Fake_Variable( 1, $children, array( new PMH_Fake_Attribute( 'pa_size', true ) ) );
+		pmh_fake_variable_product( 1, array( 10 => 's', 11 => 'm', 12 => 'l' ) );
 	}
 
 	public function test_size_chart_renders_filtered_to_variations(): void {

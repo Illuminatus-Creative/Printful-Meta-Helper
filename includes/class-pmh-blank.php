@@ -26,6 +26,25 @@ final class PMH_Blank {
 	public const KINDS = array( 'apparel', 'accessory', 'digital' );
 
 	/**
+	 * Free-text fields and how they are sanitised: 'text' is a single line,
+	 * 'lines' keeps one entry per line. The blank form, the save layer and
+	 * the materials paste all iterate this list.
+	 */
+	public const TEXT_FIELDS = array(
+		'material_solid'      => 'text',
+		'material_exceptions' => 'lines',
+		'fabric_weight'       => 'text',
+		'construction'        => 'lines',
+		'care'                => 'lines',
+		'disclaimers'         => 'lines',
+		'fit_label'           => 'text',
+		'link_text'           => 'text',
+	);
+
+	/** The subset the materials paste can fill. */
+	public const PASTE_FIELDS = array( 'material_solid', 'material_exceptions', 'fabric_weight', 'construction', 'disclaimers' );
+
+	/**
 	 * Field name => meta key. Field names are what forms and importers use.
 	 */
 	public const FIELDS = array(

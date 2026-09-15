@@ -157,6 +157,17 @@ final class AdminHelpTest extends TestCase {
 		self::assertGreaterThanOrEqual( $rows, $desc );
 	}
 
+	public function test_add_form_uses_div_markup_with_headings_and_nonce(): void {
+		ob_start();
+		PMH_Term_Meta::render_add_form();
+		$html = ob_get_clean();
+		self::assertStringContainsString( 'name="pmh_blank_nonce"', $html );
+		self::assertStringContainsString( '<div class="form-field pmh-field pmh-field--pmh_kind">', $html );
+		self::assertStringNotContainsString( '<tr class="form-field', $html, 'add form uses div rows, not table rows' );
+		self::assertSame( 5, substr_count( $html, '<h3 class="pmh-heading">' ), 'Applies to, Materials, Size chart, Companion link, Parked' );
+		self::assertSame( substr_count( $html, 'class="pmh-tip' ), count( array_filter( array_column( PMH_Term_Meta::field_specs( PMH_Blank::defaults() ), 'tip' ) ) ) );
+	}
+
 	public function test_product_metabox_carries_tips_and_manage_link(): void {
 		PMH_Fake_WP::add_post( 1 );
 		ob_start();

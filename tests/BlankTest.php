@@ -8,6 +8,17 @@ final class BlankTest extends TestCase {
 		PMH_Fake_WP::reset();
 	}
 
+	public function test_text_fields_map_matches_the_field_list_and_defaults(): void {
+		foreach ( PMH_Blank::TEXT_FIELDS as $field => $kind ) {
+			self::assertArrayHasKey( $field, PMH_Blank::FIELDS, $field );
+			self::assertSame( '', PMH_Blank::defaults()[ $field ], $field );
+			self::assertContains( $kind, array( 'text', 'lines' ), $field );
+		}
+		foreach ( PMH_Blank::PASTE_FIELDS as $field ) {
+			self::assertArrayHasKey( $field, PMH_Blank::TEXT_FIELDS, $field );
+		}
+	}
+
 	public function test_get_returns_defaults_for_unknown_term(): void {
 		$data = PMH_Blank::get( 999 );
 		self::assertSame( 'apparel', $data['kind'] );

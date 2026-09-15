@@ -42,6 +42,24 @@ final class AdminAssetsTest extends TestCase {
 		self::assertStringContainsString( '\u003C\/script\u003E', $js );
 	}
 
+	public function test_inline_data_carries_signatures_for_the_mismatch_check(): void {
+		PMH_Fake_WP::add_post( 5 );
+		PMH_Fake_WP::$post_meta[5][ PMH_Importer::PRODUCT_META_KEY ] = pmh_fixture( 'gildan-5000.json' );
+		$match = PMH_Fake_WP::add_term( 'pmh_blank', 'Gildan 5000' );
+		$other = PMH_Fake_WP::add_term( 'pmh_blank', 'Bella 3001' );
+		PMH_Blank::update( $match->term_id, array( 'chart' => pmh_test_chart() ) );
+		PMH_Blank::update( $other->term_id, array( 'chart' => PMH_Size_Chart::filter_sizes( pmh_test_chart(), array( 'S', 'M' ) ) ) );
+
+		$data = PMH_Product_Meta::inline_data( 5 );
+
+		self::assertTrue( $data['product']['hasPrintfulChart'] );
+		self::assertSame( $data['product']['signature'], $data['blanks'][ $match->term_id ]['signature'], 'matching blank shares the product signature' );
+		self::assertNotSame( $data['product']['signature'], $data['blanks'][ $other->term_id ]['signature'] );
+		self::assertSame( array( 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL' ), $data['product']['printfulSizes'] );
+		self::assertSame( 'unfiltered', $data['product']['sizesState'], 'not a variable product' );
+		self::assertArrayHasKey( 'mismatch', $data['i18n'] );
+	}
+
 	public function test_groups_screen_gets_css_only(): void {
 		self::screen( array( 'id' => 'product_page_pmh-blank-groups' ) );
 		PMH_Admin_Assets::enqueue( 'product_page_pmh-blank-groups' );
