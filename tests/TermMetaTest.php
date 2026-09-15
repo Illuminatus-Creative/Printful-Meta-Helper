@@ -56,9 +56,18 @@ final class TermMetaTest extends TestCase {
 	}
 
 	public function test_materials_paste_without_bullets_leaves_fields(): void {
-		$r = PMH_Term_Meta::collect( self::base_post( array( 'pmh_materials_paste' => 'just prose' ) ) );
+		$r = PMH_Term_Meta::collect( self::base_post( array( 'pmh_materials_paste' => 'Just prose here, nothing else. It runs to a second sentence so it is not an item.' ) ) );
 		self::assertSame( '100% cotton x', $r['data']['material_solid'] );
 		self::assertCount( 1, $r['errors'] );
+		self::assertStringContainsString( '0 list items read', $r['errors'][0] );
+	}
+
+	public function test_materials_paste_without_bullets_is_accepted(): void {
+		$r = PMH_Term_Meta::collect( self::base_post( array( 'pmh_materials_paste' => "100% combed cotton\nFabric weight: 5.3 oz\nRelaxed fit\n" ) ) );
+		self::assertSame( '100% combed cotton', $r['data']['material_solid'] );
+		self::assertSame( '5.3 oz', $r['data']['fabric_weight'] );
+		self::assertSame( 'Relaxed fit', $r['data']['construction'] );
+		self::assertSame( array(), $r['errors'] );
 	}
 
 	public function test_json_import_sets_both_charts(): void {

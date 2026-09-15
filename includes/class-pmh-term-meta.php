@@ -72,7 +72,7 @@ final class PMH_Term_Meta {
 			$spec( $materials, 'pmh_fabric_weight', __( 'Fabric weight', 'printful-meta-helper' ), self::text( 'pmh_fabric_weight', $data['fabric_weight'], '5.0–5.3 oz/yd² (170-180 g/m²)' ), __( 'Free text; ranges are kept as written.', 'printful-meta-helper' ), 'fabric_weight' ),
 			$spec( $materials, 'pmh_construction', __( 'Construction', 'printful-meta-helper' ), self::textarea( 'pmh_construction', $data['construction'], 4, "Tubular fabric\nTaped neck and shoulders" ), __( 'One feature per line.', 'printful-meta-helper' ), 'construction' ),
 			$spec( $materials, 'pmh_care', __( 'Care', 'printful-meta-helper' ), self::textarea( 'pmh_care', $data['care'], 3 ), __( 'One instruction per line. Optional.', 'printful-meta-helper' ), 'care' ),
-			$spec( $materials, 'pmh_materials_paste', __( 'Paste from Printful', 'printful-meta-helper' ), self::textarea( 'pmh_materials_paste', '', 5, "• 100% cotton\n• Sport Grey is 90% cotton, 10% polyester\n• Fabric weight: 5.0–5.3 oz/yd²\n• Tubular fabric" ), __( 'Paste the bulleted materials paragraph from Printful. On save it is split into the fields above, replacing them. Leave empty to keep the fields as they are.', 'printful-meta-helper' ), 'materials_paste' ),
+			$spec( $materials, 'pmh_materials_paste', __( 'Paste from Printful', 'printful-meta-helper' ), self::textarea( 'pmh_materials_paste', '', 5, "• 100% cotton\n• Sport Grey is 90% cotton, 10% polyester\n• Fabric weight: 5.0–5.3 oz/yd²\n• Tubular fabric" ), __( 'Paste the materials list from Printful, one item per line; bullets are optional. On save it is split into the fields above, replacing them. Leave empty to keep the fields as they are.', 'printful-meta-helper' ), 'materials_paste' ),
 
 			$spec( $chart, 'pmh_import_json', __( 'Import Printful JSON', 'printful-meta-helper' ), self::textarea( 'pmh_import_json', '', 6, '{"availableSizes":["S","M"],"productMeasurements":{...},"modelMeasurements":{...}}' ), __( 'Paste the size-guide JSON. On save, the garment chart and body chart below are replaced with its inch rows. Leave empty to keep them.', 'printful-meta-helper' ), 'import_json' ),
 			$spec( $chart, 'pmh_import_product', __( 'Import from product', 'printful-meta-helper' ), self::text( 'pmh_import_product', '', '123 or SKU' ), __( 'Product ID or SKU. On save, the size-guide JSON Printful stored on that product replaces the charts below. Ignored if JSON is pasted above.', 'printful-meta-helper' ), 'import_product' ),
@@ -274,7 +274,11 @@ final class PMH_Term_Meta {
 		if ( '' !== $paste ) {
 			$split = PMH_Importer::materials_from_text( $paste );
 			if ( '' === $split['material_solid'] && '' === $split['construction'] && '' === $split['fabric_weight'] ) {
-				$errors[] = __( 'Materials paste: no bullet lines found, fields left unchanged.', 'printful-meta-helper' );
+				$errors[] = sprintf(
+					/* translators: %d: number of list items found */
+					__( 'Materials paste: nothing usable in the pasted text (%d list items read). Paste one item per line; bullets are optional. Fields left unchanged.', 'printful-meta-helper' ),
+					$split['lines']
+				);
 			} else {
 				$post       = array_merge(
 					$post,

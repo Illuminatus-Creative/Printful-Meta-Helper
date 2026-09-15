@@ -83,8 +83,56 @@ final class ImporterTest extends TestCase {
 	}
 
 	public function test_materials_split_ignores_prose_only(): void {
-		$m = PMH_Importer::materials_from_text( "Just a paragraph with 100% cotton in it.\n" );
+		$m = PMH_Importer::materials_from_text( "Just a paragraph with 100% cotton in it. It has two sentences, so it reads as prose.\n" );
 		self::assertSame( '', $m['material_solid'] );
 		self::assertSame( '', $m['construction'] );
+		self::assertSame( 0, $m['lines'] );
+	}
+
+	/** The crop-top paste as reported, with asterisk bullets and trailing spaces. */
+	private const CROP = "* 100% combed cotton \n* Heather colors are 15% viscose and 85% cotton\n* Fabric weight: 5.3 oz/yd² (180 g/m²)\n* Relaxed fit\n* Cropped length\n* Ribbed crew neck \n* Dropped shoulders\n* Side-seamed construction\n* Shoulder-to-shoulder taping\n* Double-needle hems\n* Preshrunk\n* Blank product sourced from Bangladesh\n";
+
+	private static function assert_crop( array $m, string $label ): void {
+		self::assertSame( '100% combed cotton', $m['material_solid'], $label );
+		self::assertSame( 'Heather colors are 15% viscose and 85% cotton', $m['material_exceptions'], $label );
+		self::assertSame( '5.3 oz/yd² (180 g/m²)', $m['fabric_weight'], $label );
+		self::assertSame( "Relaxed fit\nCropped length\nRibbed crew neck\nDropped shoulders\nSide-seamed construction\nShoulder-to-shoulder taping\nDouble-needle hems\nPreshrunk", $m['construction'], $label );
+		self::assertSame( 12, $m['lines'], $label );
+	}
+
+	public function test_materials_split_accepts_asterisk_bullets(): void {
+		self::assert_crop( PMH_Importer::materials_from_text( self::CROP ), 'asterisks' );
+		self::assert_crop( PMH_Importer::materials_from_text( str_replace( "\n", "\r\n", self::CROP ) ), 'CRLF' );
+		self::assert_crop( PMH_Importer::materials_from_text( str_replace( '* ', "-\xC2\xA0", self::CROP ) ), 'hyphen + nbsp' );
+	}
+
+	public function test_materials_split_accepts_bare_lines_as_copied_from_chrome(): void {
+		$bare = str_replace( '* ', '', self::CROP );
+		self::assert_crop( PMH_Importer::materials_from_text( $bare ), 'no markers' );
+
+		// With the intro paragraph Printful shows above the list.
+		$with_intro = "The crop top that has it all. Soft, comfortable, and made to last.\n\n" . $bare;
+		self::assert_crop( PMH_Importer::materials_from_text( $with_intro ), 'intro dropped' );
+	}
+
+	public function test_materials_split_accepts_html_list(): void {
+		$html = '<p>Intro sentence here. Another one.</p><ul><li>100% combed cotton</li><li>Heather colors are 15% viscose and 85% cotton</li><li>Fabric weight: 5.3 oz/yd&sup2; (180 g/m&sup2;)</li><li>Relaxed fit</li><li>Blank product sourced from Bangladesh</li></ul>';
+		$m    = PMH_Importer::materials_from_text( $html );
+		self::assertSame( '100% combed cotton', $m['material_solid'] );
+		self::assertSame( '5.3 oz/yd² (180 g/m²)', $m['fabric_weight'], 'entities decoded' );
+		self::assertSame( 'Relaxed fit', $m['construction'] );
+	}
+
+	public function test_materials_split_survives_invalid_utf8(): void {
+		$latin1 = str_replace( '²', "\xB2", self::CROP ); // Windows-1252 superscript two
+		self::assertFalse( preg_match( '//u', $latin1 ), 'fixture really is invalid UTF-8' );
+		$m = PMH_Importer::materials_from_text( $latin1 );
+		self::assertSame( '100% combed cotton', $m['material_solid'] );
+		self::assertSame( '5.3 oz/yd² (180 g/m²)', $m['fabric_weight'] );
+	}
+
+	public function test_materials_split_disclaimers_dropped_without_markers(): void {
+		$m = PMH_Importer::materials_from_text( "100% cotton\nTubular fabric\nDisclaimers:\nWhite may look off-white\n" );
+		self::assertSame( 'Tubular fabric', $m['construction'] );
 	}
 }

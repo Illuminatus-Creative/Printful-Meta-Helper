@@ -207,14 +207,19 @@ final class PMH_Importer {
 	}
 
 	/**
-	 * Split Printful's bulleted materials paragraph into fields.
+	 * Split Printful's materials list into fields.
 	 *
-	 * Rules: the first bullet containing "%" is the base material; further
-	 * "%" bullets are colour exceptions; a "Fabric weight" bullet is the
-	 * weight; sourcing and disclaimer lines are dropped; every other bullet
-	 * is construction. Non-bullet prose is ignored.
+	 * Accepts the list with bullet markers (•, *, -, ·), without markers (a
+	 * rendered list copied from Chrome arrives as bare lines), or as HTML
+	 * list items. When any line carries a marker only marked lines count;
+	 * otherwise every line that does not read as a prose paragraph counts.
 	 *
-	 * @return array{material_solid: string, material_exceptions: string, fabric_weight: string, construction: string}
+	 * Rules: the first item containing "%" is the base material; further
+	 * "%" items are colour exceptions; a "Fabric weight" item is the
+	 * weight; sourcing lines and anything under a "Disclaimers" heading are
+	 * dropped; every other item is construction.
+	 *
+	 * @return array{material_solid: string, material_exceptions: string, fabric_weight: string, construction: string, lines: int}
 	 */
 	public static function materials_from_text( string $text ): array {
 		$out = array(
@@ -222,26 +227,16 @@ final class PMH_Importer {
 			'material_exceptions' => '',
 			'fabric_weight'       => '',
 			'construction'        => '',
+			'lines'               => 0,
 		);
 
+		$items        = self::material_items( $text );
+		$out['lines'] = count( $items );
 		$exceptions   = array();
 		$construction = array();
-		$in_disclaim  = false;
 
-		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
-			$line = trim( $line );
-			if ( '' === $line ) {
-				continue;
-			}
-			if ( preg_match( '/^disclaimers?\s*:?$/i', $line ) ) {
-				$in_disclaim = true;
-				continue;
-			}
-			if ( ! preg_match( '/^[•\-\*·]\s*(.+)$/u', $line, $m ) ) {
-				continue; // prose, not a bullet
-			}
-			$item = trim( $m[1] );
-			if ( $in_disclaim || preg_match( '/sourced from/i', $item ) ) {
+		foreach ( $items as $item ) {
+			if ( preg_match( '/sourced from/i', $item ) ) {
 				continue;
 			}
 			if ( preg_match( '/^fabric weight\s*:?\s*(.+)$/i', $item, $w ) ) {
@@ -263,5 +258,72 @@ final class PMH_Importer {
 		$out['construction']        = implode( "\n", $construction );
 
 		return $out;
+	}
+
+	/**
+	 * The list items in a materials paste, marker stripped, disclaimers
+	 * and prose removed.
+	 *
+	 * @return string[]
+	 */
+	private static function material_items( string $text ): array {
+		$text = self::utf8( $text );
+		if ( false !== stripos( $text, '<li' ) ) {
+			$text = strip_tags( preg_replace( '#</li\s*>|<br\s*/?>|</p\s*>#i', "\n", $text ) );
+		}
+		$text = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+
+		$lines    = array();
+		$bulleted = false;
+		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
+			$line = trim( $line, " \t\x0B\0\xC2\xA0" );
+			if ( '' === $line ) {
+				continue;
+			}
+			$marked = (bool) preg_match( '/^[\x{2022}\x{25E6}\x{25AA}\x{2023}\x{00B7}*\-\x{2013}]\s*(.*)$/u', $line, $m );
+			if ( $marked ) {
+				$bulleted = true;
+				$line     = trim( $m[1] );
+			}
+			$lines[] = array( $line, $marked );
+		}
+
+		$items       = array();
+		$in_disclaim = false;
+		foreach ( $lines as [ $line, $marked ] ) {
+			if ( preg_match( '/^disclaimers?\s*:?$/i', $line ) ) {
+				$in_disclaim = true;
+				continue;
+			}
+			if ( $in_disclaim || '' === $line ) {
+				continue;
+			}
+			if ( $bulleted ? ! $marked : self::looks_like_prose( $line ) ) {
+				continue;
+			}
+			$items[] = $line;
+		}
+		return $items;
+	}
+
+	/**
+	 * A paragraph, not a list item: many words or more than one sentence.
+	 */
+	private static function looks_like_prose( string $line ): bool {
+		return str_word_count( $line ) > 14 || (bool) preg_match( '/[.!?]\s+\p{Lu}/u', $line );
+	}
+
+	/**
+	 * Replace invalid UTF-8 so the /u regexes never fail wholesale (a
+	 * Windows-1252 "²" pasted from a legacy source, for example).
+	 */
+	private static function utf8( string $text ): string {
+		if ( preg_match( '//u', $text ) ) {
+			return $text;
+		}
+		if ( function_exists( 'mb_convert_encoding' ) ) {
+			return (string) mb_convert_encoding( $text, 'UTF-8', 'Windows-1252' );
+		}
+		return preg_replace( '/[\x80-\xFF]/', '', $text );
 	}
 }
