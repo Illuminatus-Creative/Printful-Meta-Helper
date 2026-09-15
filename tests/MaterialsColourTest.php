@@ -33,7 +33,7 @@ final class MaterialsColourTest extends TestCase {
 		self::assertSame( array( self::GILDAN[0] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Sport Grey' ) ) );
 		self::assertSame( array( self::GILDAN[0] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Sport Gray' ) ), 'gray/grey spelling' );
 		self::assertSame( array( self::GILDAN[2] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Dark Heather' ) ), '"Heather colors" matches any heather' );
-		self::assertSame( array(), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Ash' ) ), '"Ash Grey" is not contained in "Ash"' );
+		self::assertSame( array( self::GILDAN[1] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Ash' ) ), '"Ash Grey" names the colour "Ash": grey is a hue word' );
 		self::assertSame( array( self::GILDAN[1] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Ash Grey' ) ) );
 	}
 
@@ -67,6 +67,18 @@ final class MaterialsColourTest extends TestCase {
 		self::assertStringContainsString( 'slightly sheer', $html );
 		self::assertStringNotContainsString( 'off-white', $html );
 		self::assertStringNotContainsString( 'Natural', $html );
+	}
+
+	public function test_ash_is_disclosed_on_both_garments(): void {
+		// Bella writes "Ash color is …"; the variation is "Ash".
+		self::assertSame( array( self::BELLA[0] ), PMH_Materials::exceptions_for_colours( self::BELLA, array( 'Ash' ) ) );
+		// Gildan writes "Ash Grey is …"; Printful may name the variation "Ash" or "Ash Grey".
+		self::assertSame( array( self::GILDAN[1] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Ash' ) ), 'a hue word the line adds does not hide the disclosure' );
+		self::assertSame( array( self::GILDAN[1] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Ash Grey' ) ) );
+		self::assertSame( array( self::GILDAN[1] ), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Ash Gray' ) ) );
+		// The reverse rule must not reopen the Black / Black Heather hole.
+		self::assertSame( array(), PMH_Materials::exceptions_for_colours( self::BELLA, array( 'Black' ) ) );
+		self::assertSame( array(), PMH_Materials::exceptions_for_colours( self::GILDAN, array( 'Grey' ) ), 'a bare hue word names no specific exception' );
 	}
 
 	public function test_matcher_edge_cases(): void {

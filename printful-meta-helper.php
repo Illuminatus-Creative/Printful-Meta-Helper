@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Printful Meta Helper
  * Description:       INTERNAL USE ONLY — not for distribution. Defines reusable garment blanks (size charts, materials) and renders them into WooCommerce product pages via shortcode.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Requires Plugins:  woocommerce
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PMH_VERSION', '1.0.0' );
+define( 'PMH_VERSION', '1.0.1' );
 define( 'PMH_FILE', __FILE__ );
 define( 'PMH_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PMH_URL', plugin_dir_url( __FILE__ ) );

@@ -198,10 +198,21 @@ final class PMH_Materials {
 	}
 
 	/**
-	 * Whether any phrase occurs, on word boundaries, inside any colour name.
-	 * Case-insensitive; "gray" and "grey" are the same; whitespace is
-	 * collapsed. "Heather" is inside "Dark Heather"; "Black Heather" is not
-	 * inside "Black".
+	 * Words a materials line may add to a colour name without naming a
+	 * different colour: "Ash Grey" in the line is the variation "Ash".
+	 * "Heather" is deliberately absent: "Black Heather" is not "Black".
+	 */
+	private const HUE_WORDS = array( 'grey' );
+
+	/**
+	 * Whether any phrase names any of the colours.
+	 *
+	 * Forward: the phrase occurs, on word boundaries, inside the colour name
+	 * ("Heather" in "Dark Heather"; "Black Heather" not in "Black").
+	 * Reverse: the colour name occurs inside the phrase and every word the
+	 * phrase adds is a hue word ("Ash Grey" names the colour "Ash"; "Black
+	 * Heather" does not name "Black"). Case-insensitive; "gray" and "grey"
+	 * are the same; whitespace is collapsed.
 	 *
 	 * @param string[] $phrases Raw phrases (empties ignored).
 	 * @param string[] $colours Raw colour names.
@@ -210,14 +221,24 @@ final class PMH_Materials {
 		$phrases = array_filter( array_map( array( __CLASS__, 'normalise_colour' ), $phrases ) );
 		$colours = array_filter( array_map( array( __CLASS__, 'normalise_colour' ), $colours ) );
 		foreach ( $phrases as $phrase ) {
-			$pattern = '/(?<![\p{L}\p{N}])' . preg_quote( $phrase, '/' ) . '(?![\p{L}\p{N}])/u';
 			foreach ( $colours as $colour ) {
-				if ( preg_match( $pattern, $colour ) ) {
+				if ( self::contains_words( $colour, $phrase ) ) {
 					return true;
+				}
+				if ( self::contains_words( $phrase, $colour ) ) {
+					$extra = array_diff( explode( ' ', $phrase ), explode( ' ', $colour ) );
+					if ( ! array_diff( $extra, self::HUE_WORDS ) ) {
+						return true;
+					}
 				}
 			}
 		}
 		return false;
+	}
+
+	/** Whether $needle occurs in $haystack on word boundaries. */
+	private static function contains_words( string $haystack, string $needle ): bool {
+		return (bool) preg_match( '/(?<![\p{L}\p{N}])' . preg_quote( $needle, '/' ) . '(?![\p{L}\p{N}])/u', $haystack );
 	}
 
 	/** Lower-case, single-spaced, "gray" spelt "grey". */

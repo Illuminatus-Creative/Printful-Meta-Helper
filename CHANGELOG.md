@@ -5,6 +5,15 @@ constant move together, on every change that ships to a site: patch for a
 fix, minor for a feature, major for a change that needs data or template
 work on install. A test fails when the two disagree.
 
+## 1.0.1
+
+- Colour exceptions: a line whose colour phrase adds only a hue word to the
+  variation name now matches, so Gildan's "Ash Grey is 99% cotton" renders
+  on a product whose colour is named "Ash". "Black Heather" still does not
+  match "Black".
+- Internal: materials rendering and the colour filters moved from
+  `PMH_Renderer` into `PMH_Materials`, sharing one matcher.
+
 ## 1.0.0
 
 First complete release. Everything the build plan called for, plus the
