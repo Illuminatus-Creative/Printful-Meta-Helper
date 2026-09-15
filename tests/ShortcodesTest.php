@@ -78,7 +78,10 @@ final class ShortcodesTest extends TestCase {
 		self::assertStringContainsString( 'pmh-chart--unit-cm', $html );
 		self::assertStringContainsString( 'pmh-chart--locked', $html );
 		self::assertStringContainsString( ' x y"', $html );
-		self::assertStringNotContainsString( 'pmh-chart__note', $html );
+		self::assertStringContainsString( 'pmh-chart__note--supplier', $html, 'note="0" leaves the fixed supplier line' );
+		self::assertStringNotContainsString( 'pmh-chart__note--blank', $html );
+		$none = PMH_Shortcodes::size_chart( array( 'product_id' => '1', 'note' => '0', 'supplier' => 'no' ) );
+		self::assertStringNotContainsString( 'pmh-chart__note', $none );
 
 		PMH_Blank::update( $this->blank->term_id, array( 'body_chart' => PMH_Importer::from_json( pmh_fixture( 'gildan-5000.json' ) )['body'] ) );
 		$body = PMH_Shortcodes::size_chart( array( 'product_id' => '1', 'table' => 'body' ) );

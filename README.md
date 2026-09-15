@@ -85,8 +85,10 @@ group. Check the product list under each group before applying.
 
 Products → Blanks → edit. Three import boxes are processed when you save:
 
-- **Paste from Printful** (materials): the bulleted paragraph is split into
-  base material, colour exceptions, fabric weight and construction.
+- **Paste from Printful** (materials): the list, bullets optional, is split
+  into base material, colour exceptions, fabric weight, construction and
+  disclaimers (both a "Disclaimers:" heading with lines under it and an
+  inline "Disclaimer: …" sentence are read).
 - **Import Printful JSON**: the size-guide JSON. Inch rows from
   `productMeasurements` become the garment chart and from
   `modelMeasurements` the body chart. Centimetre rows are ignored because
@@ -120,14 +122,37 @@ AJAX, so open the blank afterwards to see what was imported.
 ```
 
 `[pmh_materials]` renders a definition list of material (with colour
-exceptions as a sub-list), fabric weight, construction and care, skipping
-empty fields, for any blank kind. `[pmh_blank_name]` is the blank's name as
-plain text for use inside a sentence. All three return an empty string when
-the product has no blank.
+exceptions as a sub-list), fabric weight, construction, care and
+disclaimers, skipping empty fields, for any blank kind. `[pmh_blank_name]`
+is the blank's name as plain text for use inside a sentence. All three
+return an empty string when the product has no blank.
+
+`[pmh_companion_link product_id="" class=""]` links a product to its
+companion (a unisex tee and its women's-sizing twin). The link is set per
+product in the Blank box with WooCommerce's product search and is kept one
+to one and two ways: saving A with companion B also points B at A, and
+clears whatever B pointed at before, with a notice. The wording lives on
+the blanks: each blank has a **fit label** shown before the link on its own
+products ("Unisex sizing.") and a **link text** other products use to reach
+it ("Looking for women's sizes?"). Output is inline so the surrounding text
+block controls styling:
+
+```
+<span class="pmh-companion pmh-companion--bella-3001">
+  <span class="pmh-companion__fit">Unisex sizing.</span>
+  <a class="pmh-companion__link" href="…"><em>Looking for women's sizes?</em></a>
+</span>
+```
+
+Nothing renders when there is no companion, the companion is not published,
+or its blank has no link text.
 
 Defaults to the product in the loop or the queried product. Renders the
 blank's garment chart (`table="body"` for body measurements) with one row per
-size, an inches/centimetres toggle, and the note. Returns an empty string,
+size, an inches/centimetres toggle, the fixed line "Measurements are provided
+by suppliers." (`supplier="0"` hides it; the `pmh_chart_supplier_line` filter
+changes it), and the blank's note. Values display to one decimal, as
+Printful shows them; storage keeps two. Returns an empty string,
 never a message, when the product has no blank, the blank is not apparel,
 the chart is empty, or no chart size matches the product's variations.
 
@@ -150,7 +175,7 @@ never edit the plugin stylesheet.
     th.pmh-chart__head (--size on the first)
     tr.pmh-chart__row[data-size] > th.pmh-chart__size, td.pmh-chart__cell
       span.pmh-chart__val--in / span.pmh-chart__val--cm (one shown by CSS)
-  p.pmh-chart__note
+  p.pmh-chart__note--supplier, p.pmh-chart__note--blank
 ```
 
 ```

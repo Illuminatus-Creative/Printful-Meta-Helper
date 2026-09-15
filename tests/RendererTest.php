@@ -19,10 +19,10 @@ final class RendererTest extends TestCase {
 		self::assertSame( 2, substr_count( $html, '<tr class="pmh-chart__row"' ) );
 		self::assertStringContainsString( '<tr class="pmh-chart__row" data-size="S"><th scope="row" class="pmh-chart__size">S</th>', $html );
 		self::assertStringContainsString( '<span class="pmh-chart__val pmh-chart__val--in">28&quot;</span><span class="pmh-chart__val pmh-chart__val--cm">71.1</span>', $html );
-		self::assertStringContainsString( '<span class="pmh-chart__val pmh-chart__val--in">15.63&quot;</span><span class="pmh-chart__val pmh-chart__val--cm">39.7</span>', $html );
+		self::assertStringContainsString( '<span class="pmh-chart__val pmh-chart__val--in">15.6&quot;</span><span class="pmh-chart__val pmh-chart__val--cm">39.7</span>', $html );
 		self::assertStringNotContainsString( 'data-size="L"', $html );
 
-		self::assertStringContainsString( '<p class="pmh-chart__note">Product measurements may vary by up to 2&quot; (5 cm).</p>', $html );
+		self::assertStringContainsString( '<p class="pmh-chart__note pmh-chart__note--supplier">Measurements are provided by suppliers.</p><p class="pmh-chart__note pmh-chart__note--blank">Product measurements may vary by up to 2&quot; (5 cm).</p>', $html, 'supplier line first, then the blank\'s note' );
 		self::assertStringEndsWith( '</div>', $html );
 	}
 
@@ -31,11 +31,12 @@ final class RendererTest extends TestCase {
 			pmh_test_blank(),
 			pmh_test_chart(),
 			array(
-				'unit'   => 'cm',
-				'toggle' => false,
-				'note'   => false,
-				'class'  => 'my-chart <bad>',
-				'table'  => 'body',
+				'unit'     => 'cm',
+				'toggle'   => false,
+				'note'     => false,
+				'supplier' => false,
+				'class'    => 'my-chart <bad>',
+				'table'    => 'body',
 			)
 		);
 		self::assertStringContainsString( 'pmh-chart--body', $html );
@@ -44,6 +45,16 @@ final class RendererTest extends TestCase {
 		self::assertStringContainsString( ' my-chart bad"', $html );
 		self::assertStringNotContainsString( 'pmh-chart__toggle', $html );
 		self::assertStringNotContainsString( 'pmh-chart__note', $html );
+	}
+
+	public function test_supplier_line_shows_without_a_note_and_can_be_switched_off(): void {
+		$chart         = pmh_test_chart();
+		$chart['note'] = '';
+		$html          = PMH_Renderer::size_chart( pmh_test_blank(), $chart );
+		self::assertStringContainsString( 'pmh-chart__note--supplier', $html );
+		self::assertStringNotContainsString( 'pmh-chart__note--blank', $html );
+		$off = PMH_Renderer::size_chart( pmh_test_blank(), $chart, array( 'supplier' => false ) );
+		self::assertStringNotContainsString( 'pmh-chart__note', $off );
 	}
 
 	public function test_ranges_and_missing_cells(): void {

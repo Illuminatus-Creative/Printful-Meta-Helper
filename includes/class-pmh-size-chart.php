@@ -267,12 +267,13 @@ final class PMH_Size_Chart {
 	}
 
 	/**
-	 * Display string for a value list: "28" or "34–37". No unit.
+	 * Display string for a value list: "28" or "34–37". No unit. Shown to
+	 * one decimal, as Printful displays them; storage keeps two.
 	 */
 	public static function format_values( array $values, string $unit = 'in' ): string {
 		$fmt = static function ( float $v ) use ( $unit ): string {
-			$v = 'cm' === $unit ? self::to_cm( $v ) : $v;
-			$s = rtrim( rtrim( number_format( $v, 2, '.', '' ), '0' ), '.' );
+			$v = 'cm' === $unit ? self::to_cm( $v ) : round( $v, 1 );
+			$s = rtrim( rtrim( number_format( $v, 1, '.', '' ), '0' ), '.' );
 			return '' === $s ? '0' : $s;
 		};
 		return implode( '–', array_map( $fmt, $values ) );

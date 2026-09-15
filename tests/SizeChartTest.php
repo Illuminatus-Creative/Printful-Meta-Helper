@@ -112,7 +112,9 @@ final class SizeChartTest extends TestCase {
 
 	public function test_format_values(): void {
 		self::assertSame( '28', PMH_Size_Chart::format_values( array( 28.0 ) ) );
-		self::assertSame( '15.63', PMH_Size_Chart::format_values( array( 15.63 ) ) );
+		self::assertSame( '15.6', PMH_Size_Chart::format_values( array( 15.63 ) ), 'one decimal, as Printful displays' );
+		self::assertSame( '25.3', PMH_Size_Chart::format_values( array( 25.25 ) ) );
+		self::assertSame( '10.3', PMH_Size_Chart::format_values( array( 10.25 ) ) );
 		self::assertSame( '34–37', PMH_Size_Chart::format_values( array( 34.0, 37.0 ) ) );
 		self::assertSame( '86.4–94', PMH_Size_Chart::format_values( array( 34.0, 37.0 ), 'cm' ) );
 	}

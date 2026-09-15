@@ -12,16 +12,27 @@ final class PMH_Shortcodes {
 		add_shortcode( 'pmh_size_chart', array( __CLASS__, 'size_chart' ) );
 		add_shortcode( 'pmh_materials', array( __CLASS__, 'materials' ) );
 		add_shortcode( 'pmh_blank_name', array( __CLASS__, 'blank_name' ) );
+		add_shortcode( 'pmh_companion_link', array( __CLASS__, 'companion_link' ) );
 	}
 
 	/**
-	 * [pmh_materials product_id="" fields="material,weight,construction,care" labels="1" class=""]
+	 * [pmh_companion_link product_id="" class=""] — "Unisex sizing. Looking
+	 * for women’s sizes?" linking to the companion product, or nothing.
+	 */
+	public static function companion_link( $atts ): string {
+		$atts       = shortcode_atts( array( 'product_id' => 0, 'class' => '' ), $atts, 'pmh_companion_link' );
+		$product_id = self::resolve_product_id( $atts['product_id'] );
+		return $product_id ? PMH_Companion::link_html( $product_id, (string) $atts['class'] ) : '';
+	}
+
+	/**
+	 * [pmh_materials product_id="" fields="material,weight,construction,care,disclaimers" labels="1" class=""]
 	 */
 	public static function materials( $atts ): string {
 		$atts = shortcode_atts(
 			array(
 				'product_id' => 0,
-				'fields'     => 'material,weight,construction,care',
+				'fields'     => 'material,weight,construction,care,disclaimers',
 				'labels'     => '1',
 				'class'      => '',
 			),
@@ -59,7 +70,7 @@ final class PMH_Shortcodes {
 	}
 
 	/**
-	 * [pmh_size_chart product_id="" unit="in" toggle="1" note="1" table="product" class=""]
+	 * [pmh_size_chart product_id="" unit="in" toggle="1" note="1" supplier="1" table="product" class=""]
 	 */
 	public static function size_chart( $atts ): string {
 		$atts = shortcode_atts(
@@ -68,6 +79,7 @@ final class PMH_Shortcodes {
 				'unit'       => 'in',
 				'toggle'     => '1',
 				'note'       => '1',
+				'supplier'   => '1',
 				'table'      => 'product',
 				'class'      => '',
 			),
@@ -105,9 +117,10 @@ final class PMH_Shortcodes {
 			$applied['chart'],
 			array(
 				'unit'   => 'cm' === strtolower( (string) $atts['unit'] ) ? 'cm' : 'in',
-				'toggle' => PMH_Util::truthy( $atts['toggle'] ),
-				'note'   => PMH_Util::truthy( $atts['note'] ),
-				'table'  => $table,
+				'toggle'   => PMH_Util::truthy( $atts['toggle'] ),
+				'note'     => PMH_Util::truthy( $atts['note'] ),
+				'supplier' => PMH_Util::truthy( $atts['supplier'] ),
+				'table'    => $table,
 				'class'  => (string) $atts['class'],
 			)
 		);

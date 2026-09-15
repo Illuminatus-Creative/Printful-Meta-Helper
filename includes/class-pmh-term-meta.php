@@ -59,6 +59,7 @@ final class PMH_Term_Meta {
 		$applies   = __( 'Applies to', 'printful-meta-helper' );
 		$materials = __( 'Materials', 'printful-meta-helper' );
 		$chart     = __( 'Size chart', 'printful-meta-helper' );
+		$companion = __( 'Companion link', 'printful-meta-helper' );
 		$parked    = __( 'Parked', 'printful-meta-helper' );
 
 		$spec = static fn( string $section, string $id, string $label, string $control, string $description = '', string $tip = '' ): array => compact( 'section', 'id', 'label', 'control', 'description', 'tip' );
@@ -72,6 +73,7 @@ final class PMH_Term_Meta {
 			$spec( $materials, 'pmh_fabric_weight', __( 'Fabric weight', 'printful-meta-helper' ), self::text( 'pmh_fabric_weight', $data['fabric_weight'], '5.0–5.3 oz/yd² (170-180 g/m²)' ), __( 'Free text; ranges are kept as written.', 'printful-meta-helper' ), 'fabric_weight' ),
 			$spec( $materials, 'pmh_construction', __( 'Construction', 'printful-meta-helper' ), self::textarea( 'pmh_construction', $data['construction'], 4, "Tubular fabric\nTaped neck and shoulders" ), __( 'One feature per line.', 'printful-meta-helper' ), 'construction' ),
 			$spec( $materials, 'pmh_care', __( 'Care', 'printful-meta-helper' ), self::textarea( 'pmh_care', $data['care'], 3 ), __( 'One instruction per line. Optional.', 'printful-meta-helper' ), 'care' ),
+			$spec( $materials, 'pmh_disclaimers', __( 'Disclaimers', 'printful-meta-helper' ), self::textarea( 'pmh_disclaimers', $data['disclaimers'], 3, 'The fabric is slightly sheer and may appear see-through, especially in lighter colors.' ), __( 'One per line. Rendered as the last row of [pmh_materials].', 'printful-meta-helper' ), 'disclaimers' ),
 			$spec( $materials, 'pmh_materials_paste', __( 'Paste from Printful', 'printful-meta-helper' ), self::textarea( 'pmh_materials_paste', '', 5, "• 100% cotton\n• Sport Grey is 90% cotton, 10% polyester\n• Fabric weight: 5.0–5.3 oz/yd²\n• Tubular fabric" ), __( 'Paste the materials list from Printful, one item per line; bullets are optional. On save it is split into the fields above, replacing them. Leave empty to keep the fields as they are.', 'printful-meta-helper' ), 'materials_paste' ),
 
 			$spec( $chart, 'pmh_import_json', __( 'Import Printful JSON', 'printful-meta-helper' ), self::textarea( 'pmh_import_json', '', 6, '{"availableSizes":["S","M"],"productMeasurements":{...},"modelMeasurements":{...}}' ), __( 'Paste the size-guide JSON. On save, the garment chart and body chart below are replaced with its inch rows. Leave empty to keep them.', 'printful-meta-helper' ), 'import_json' ),
@@ -80,6 +82,9 @@ final class PMH_Term_Meta {
 			$spec( $chart, 'pmh_chart', __( 'Garment chart (inches)', 'printful-meta-helper' ), self::textarea( 'pmh_chart', self::chart_json( $data['chart'] ), 12, '', 'code pmh-chart-json' ), __( 'Measurements of the garment laid flat, rendered by [pmh_size_chart]. Columns are sizes, rows are measurements; a cell takes 28, 34-37 or 16 ½. Inches only; centimetres are computed. "Edit as JSON" shows the stored structure.', 'printful-meta-helper' ), 'chart' ),
 			$spec( $chart, 'pmh_body_chart', __( 'Body chart (inches)', 'printful-meta-helper' ), self::textarea( 'pmh_body_chart', self::chart_json( $data['body_chart'] ), 8, '', 'code pmh-chart-json' ), __( 'Body measurements ("measure yourself"). Stored separately; rendered only when a shortcode asks for it.', 'printful-meta-helper' ), 'body_chart' ),
 			$spec( $chart, 'pmh_shortcodes', __( 'Shortcodes', 'printful-meta-helper' ), PMH_Admin_Help::shortcodes_box() ),
+
+			$spec( $companion, 'pmh_fit_label', __( 'Fit label', 'printful-meta-helper' ), self::text( 'pmh_fit_label', $data['fit_label'], __( 'Unisex sizing.', 'printful-meta-helper' ) ), __( 'Shown before the link on this blank\'s own products by [pmh_companion_link]. Leave empty to show the link alone.', 'printful-meta-helper' ), 'fit_label' ),
+			$spec( $companion, 'pmh_link_text', __( 'Link text to reach this blank', 'printful-meta-helper' ), self::text( 'pmh_link_text', $data['link_text'], __( 'Looking for women’s sizes?', 'printful-meta-helper' ) ), __( 'The link text other products use to point at a companion product on this blank. Empty means no link renders towards this blank.', 'printful-meta-helper' ), 'link_text' ),
 
 			$spec( $parked, 'pmh_handling', __( 'Handling time (days)', 'printful-meta-helper' ), self::handling_inputs( $data ), __( 'Reserved for later feed work. Leave empty.', 'printful-meta-helper' ), 'handling' ),
 		);
@@ -273,7 +278,7 @@ final class PMH_Term_Meta {
 		$paste = isset( $post['pmh_materials_paste'] ) ? trim( (string) $post['pmh_materials_paste'] ) : '';
 		if ( '' !== $paste ) {
 			$split = PMH_Importer::materials_from_text( $paste );
-			if ( '' === $split['material_solid'] && '' === $split['construction'] && '' === $split['fabric_weight'] ) {
+			if ( '' === $split['material_solid'] && '' === $split['construction'] && '' === $split['fabric_weight'] && '' === $split['disclaimers'] ) {
 				$errors[] = sprintf(
 					/* translators: %d: number of list items found */
 					__( 'Materials paste: nothing usable in the pasted text (%d list items read). Paste one item per line; bullets are optional. Fields left unchanged.', 'printful-meta-helper' ),
@@ -287,6 +292,7 @@ final class PMH_Term_Meta {
 						'pmh_material_exceptions' => $split['material_exceptions'],
 						'pmh_fabric_weight'       => $split['fabric_weight'],
 						'pmh_construction'        => $split['construction'],
+						'pmh_disclaimers'         => $split['disclaimers'],
 					)
 				);
 				$messages[] = __( 'Materials imported from the pasted paragraph.', 'printful-meta-helper' );
@@ -298,6 +304,9 @@ final class PMH_Term_Meta {
 			'fabric_weight'       => sanitize_text_field( (string) ( $post['pmh_fabric_weight'] ?? '' ) ),
 			'construction'        => self::sanitise_lines( (string) ( $post['pmh_construction'] ?? '' ) ),
 			'care'                => self::sanitise_lines( (string) ( $post['pmh_care'] ?? '' ) ),
+			'disclaimers'         => self::sanitise_lines( (string) ( $post['pmh_disclaimers'] ?? '' ) ),
+			'fit_label'           => sanitize_text_field( (string) ( $post['pmh_fit_label'] ?? '' ) ),
+			'link_text'           => sanitize_text_field( (string) ( $post['pmh_link_text'] ?? '' ) ),
 		);
 	}
 

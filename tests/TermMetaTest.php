@@ -52,7 +52,13 @@ final class TermMetaTest extends TestCase {
 		self::assertSame( '100% cotton', $r['data']['material_solid'] );
 		self::assertSame( '5.0–5.3 oz/yd² (170-180 g/m²)', $r['data']['fabric_weight'] );
 		self::assertStringContainsString( 'Ash Grey', $r['data']['material_exceptions'] );
+		self::assertStringContainsString( 'off-white', $r['data']['disclaimers'] );
 		self::assertSame( array( 'Materials imported from the pasted paragraph.' ), $r['messages'] );
+	}
+
+	public function test_disclaimers_field_is_saved_and_sanitised(): void {
+		$r = PMH_Term_Meta::collect( self::base_post( array( 'pmh_disclaimers' => " Slightly <b>sheer</b> \n\nRuns small " ) ) );
+		self::assertSame( "Slightly sheer\nRuns small", $r['data']['disclaimers'] );
 	}
 
 	public function test_materials_paste_without_bullets_leaves_fields(): void {

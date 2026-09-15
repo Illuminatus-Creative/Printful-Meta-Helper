@@ -51,6 +51,7 @@ final class PMH_Product_Meta {
 		if ( ! $blanks ) {
 			echo '<p class="description">' . esc_html__( 'No blanks exist yet. Create one under Products → Blanks.', 'printful-meta-helper' ) . '</p>';
 		}
+		echo PMH_Companion::render_field( $product_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped inside.
 		printf(
 			'<p class="pmh-assign__manage"><a href="%s">%s</a></p>',
 			esc_url( admin_url( 'edit-tags.php?taxonomy=' . PMH_TAXONOMY . '&post_type=product' ) ),

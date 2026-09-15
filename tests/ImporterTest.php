@@ -80,6 +80,28 @@ final class ImporterTest extends TestCase {
 			"Open-end yarn\nTubular fabric\nTaped neck and shoulders\nDouble seam at sleeves and bottom hem",
 			$m['construction']
 		);
+		self::assertSame(
+			"Due to the fabric properties, the White color variant may appear off-white rather than bright white.\nDark color speckles throughout the fabric are expected for the color Natural.",
+			$m['disclaimers'],
+			'Gildan shape: heading then bullet lines'
+		);
+	}
+
+	public function test_materials_split_bella_inline_disclaimer(): void {
+		$m = PMH_Importer::materials_from_text( pmh_fixture( 'bella-3001-materials.txt' ) );
+		self::assertSame( 'Solid colors are 100% Airlume combed and ring-spun cotton', $m['material_solid'] );
+		self::assertCount( 4, explode( "\n", $m['material_exceptions'] ) );
+		self::assertSame( '4.2 oz./yd.² (142 g/m²)', $m['fabric_weight'] );
+		self::assertSame( "Pre-shrunk fabric\n30 singles\nSide-seamed construction\nTear-away label\nShoulder-to-shoulder taping", $m['construction'] );
+		self::assertSame( 'The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions.', $m['disclaimers'], 'Bella shape: inline sentence, label stripped' );
+		self::assertSame( 13, $m['lines'] );
+	}
+
+	public function test_materials_split_inline_disclaimer_without_bullets(): void {
+		$bare = str_replace( '* ', '', pmh_fixture( 'bella-3001-materials.txt' ) );
+		$m    = PMH_Importer::materials_from_text( $bare );
+		self::assertStringStartsWith( 'The fabric is slightly sheer', $m['disclaimers'] );
+		self::assertStringNotContainsString( 'sheer', $m['construction'] );
 	}
 
 	public function test_materials_split_ignores_prose_only(): void {
@@ -131,8 +153,9 @@ final class ImporterTest extends TestCase {
 		self::assertSame( '5.3 oz/yd² (180 g/m²)', $m['fabric_weight'] );
 	}
 
-	public function test_materials_split_disclaimers_dropped_without_markers(): void {
-		$m = PMH_Importer::materials_from_text( "100% cotton\nTubular fabric\nDisclaimers:\nWhite may look off-white\n" );
+	public function test_materials_split_disclaimers_heading_without_markers(): void {
+		$m = PMH_Importer::materials_from_text( "100% cotton\nTubular fabric\nDisclaimers:\nWhite may look off-white\nSpeckles are expected on Natural\n" );
 		self::assertSame( 'Tubular fabric', $m['construction'] );
+		self::assertSame( "White may look off-white\nSpeckles are expected on Natural", $m['disclaimers'] );
 	}
 }

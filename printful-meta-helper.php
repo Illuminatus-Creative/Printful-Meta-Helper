@@ -56,6 +56,7 @@ add_action(
 		PMH_Admin_Help::init();
 		PMH_Grouping::init();
 		PMH_Sizes::init();
+		PMH_Companion::init();
 		PMH_Renderer::init();
 		PMH_Shortcodes::init();
 	}

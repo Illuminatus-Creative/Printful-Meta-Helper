@@ -148,7 +148,13 @@ function selected( $a, $b = true, $echo = true ) { return $a == $b ? ' selected=
 function wp_verify_nonce( $n, $a ) { return PMH_Fake_WP::$nonce_ok; }
 function current_user_can( $cap, ...$args ) { return PMH_Fake_WP::$can_callback ? (bool) call_user_func( PMH_Fake_WP::$can_callback, $cap, $args ) : PMH_Fake_WP::$can; }
 function get_current_user_id() { return 1; }
-function wp_nonce_field( $a, $n ) { echo '<input type="hidden" name="' . $n . '" value="nonce">'; }
+function wp_nonce_field( $a, $n = '_wpnonce', $referer = true, $echo = true ) {
+	$html = '<input type="hidden" name="' . $n . '" value="nonce">';
+	if ( $echo ) {
+		echo $html;
+	}
+	return $html;
+}
 function get_current_screen() { return PMH_Fake_WP::$screen; }
 function is_admin() { return PMH_Fake_WP::$is_admin; }
 function submit_button( $text = '' ) { echo '<p class="submit"><button type="submit" class="button button-primary">' . esc_html( $text ) . '</button></p>'; }
@@ -200,6 +206,10 @@ function update_meta_cache( $type, $ids ) {
 	}
 	return array();
 }
+function update_post_meta( $id, $key, $value ) { PMH_Fake_WP::$post_meta[ (int) $id ][ $key ] = $value; return true; }
+function delete_post_meta( $id, $key ) { unset( PMH_Fake_WP::$post_meta[ (int) $id ][ $key ] ); return true; }
+function get_post_status( $id ) { return PMH_Fake_WP::$posts[ (int) $id ]['status'] ?? false; }
+function get_permalink( $id ) { return isset( PMH_Fake_WP::$posts[ (int) $id ] ) ? 'https://example.test/shop/product-' . (int) $id . '/' : false; }
 function get_post_meta( $id, $key = '', $single = false ) {
 	// A miss is one SELECT in core; a hit is served from the object cache.
 	PMH_Fake_WP::count( isset( PMH_Fake_WP::$primed_meta[ (int) $id ] ) ? 'get_post_meta_hit' : 'get_post_meta_miss' );

@@ -46,7 +46,8 @@ final class PMH_Admin_Help {
 			'fabric_weight'       => __( 'Free text, so a range such as "5.0–5.3 oz/yd² (170-180 g/m²)" survives as written.', 'printful-meta-helper' ),
 			'construction'        => __( 'One feature per line: seams, taping, hem. Rendered as a list. A single line renders as plain text.', 'printful-meta-helper' ),
 			'care'                => __( 'One washing instruction per line. Printful does not supply this, so it is optional; leave it empty and the row is omitted.', 'printful-meta-helper' ),
-			'materials_paste'     => __( 'Paste Printful\'s materials list from the product description, with or without bullet markers. On save the first line containing "%" becomes the base material, further "%" lines become colour exceptions, the "Fabric weight" line becomes the weight, and every other line becomes construction. Introductory prose, sourcing and disclaimer lines are dropped. The fields above are replaced, and remain editable afterwards.', 'printful-meta-helper' ),
+			'disclaimers'         => __( 'Printful\'s disclaimers for the garment, one per line, for example a sheerness warning. Rendered as the last row of [pmh_materials]. Both of Printful\'s shapes are read by the paste box: a "Disclaimers:" heading with lines under it, or an inline "Disclaimer: …" sentence.', 'printful-meta-helper' ),
+			'materials_paste'     => __( 'Paste Printful\'s materials list, bullets optional. On save the first "%" line becomes the base material, further "%" lines colour exceptions, the "Fabric weight" line the weight, disclaimer lines disclaimers, and the rest construction. Intro prose and sourcing lines are dropped. The fields above are replaced and stay editable.', 'printful-meta-helper' ),
 			// Size chart imports.
 			'import_json'         => __( 'The size-guide JSON. On products Printful has pushed, it is stored in the product\'s Custom Fields under pf_advanced_size_chart; otherwise copy it from the Printful website. Only the inch rows are read, because the centimetre rows are exact conversions. Replaces both charts below.', 'printful-meta-helper' ),
 			'import_product'      => __( 'Type a product ID or SKU and, on save, the chart is read from the size-guide JSON Printful stored on that product. Saves opening the Custom Fields panel to copy it. Products imported before Printful started storing the JSON have none and produce a notice.', 'printful-meta-helper' ),
@@ -54,6 +55,10 @@ final class PMH_Admin_Help {
 			'chart'               => __( 'What [pmh_size_chart] renders. Columns are sizes, rows are measurements; a cell takes 28, 34-37 or 16 ½. Keep every size the garment comes in: each product shows only the sizes it has variations for. Inches only; centimetres are computed when rendered.', 'printful-meta-helper' ),
 			'body_chart'          => __( 'Body measurements ("measure yourself"), imported alongside the garment chart. Rendered only by [pmh_size_chart table="body"]. Printful shows these in its own pop-up, so most sites leave this unused.', 'printful-meta-helper' ),
 			'handling'            => __( 'Reserved for a future product-feed integration. Leave empty.', 'printful-meta-helper' ),
+			// Companion link.
+			'fit_label'           => __( 'Printed before the companion link on this blank\'s own products, for example "Unisex sizing." Leave empty on a blank whose products should show the link alone, as a women\'s tee usually does.', 'printful-meta-helper' ),
+			'link_text'           => __( 'How other products link to a companion on this blank, for example "Looking for women\'s sizes?" on the women\'s blank and "Looking for men\'s/unisex sizes?" on the unisex one. Empty means no link ever points here.', 'printful-meta-helper' ),
+			'companion'           => __( 'The women\'s or unisex twin of this product. Saving links both products to each other; if the chosen product was already linked elsewhere, that link is cleared and a notice says so. [pmh_companion_link] renders the sentence; it renders nothing when there is no companion.', 'printful-meta-helper' ),
 			// Product screen.
 			'product_select'      => __( 'One blank per product. The size chart and materials are read from the blank when the page renders, so correcting the blank corrects every product that uses it. Only blanks offered for the product\'s ticked categories are listed.', 'printful-meta-helper' ),
 			'product_show_all'    => __( 'Lists every blank regardless of the product\'s categories. Use it for a product in a new or unusual category, or when the right blank is not listed.', 'printful-meta-helper' ),
@@ -117,8 +122,9 @@ final class PMH_Admin_Help {
 	public static function shortcodes_box(): string {
 		$rows = array(
 			array( '[pmh_size_chart]', __( 'Size chart for the product in the loop, with the inches/centimetres switch and the note. Attributes: product_id, unit="cm", toggle="0", note="0", table="body", class="".', 'printful-meta-helper' ) ),
-			array( '[pmh_materials]', __( 'Material with colour exceptions, fabric weight, construction and care, skipping empty fields. Attributes: product_id, fields="material,weight", labels="0", class="".', 'printful-meta-helper' ) ),
+			array( '[pmh_materials]', __( 'Material with colour exceptions, fabric weight, construction, care and disclaimers, skipping empty fields. Attributes: product_id, fields="material,weight", labels="0", class="".', 'printful-meta-helper' ) ),
 			array( '[pmh_blank_name]', __( 'The blank\'s name as plain text, for use inside a sentence.', 'printful-meta-helper' ) ),
+			array( '[pmh_companion_link]', __( 'This blank\'s fit label plus a link to the product\'s companion (unisex ↔ women\'s), using the companion blank\'s link text. Nothing when the product has no companion. Attributes: product_id, class="".', 'printful-meta-helper' ) ),
 		);
 		$html = '<table class="pmh-shortcodes"><tbody>';
 		foreach ( $rows as $row ) {
@@ -191,15 +197,16 @@ final class PMH_Admin_Help {
 			'id'      => 'data',
 			'title'   => __( 'Getting the data', 'printful-meta-helper' ),
 			'content' => $p( __( 'Size chart, three sources, in order of preference: Import from product (type an ID or SKU of a product Printful pushed; the chart is read from the JSON Printful stored on it), Import Printful JSON (paste the same JSON, found in the product\'s Custom Fields under pf_advanced_size_chart or on the Printful website), or Import pasted table (copy the table off the Printful product page). Products imported before Printful started storing the JSON have none; use the pasted table for those.', 'printful-meta-helper' ) )
-				. $p( __( 'Materials: paste the bullet list from Printful\'s product description into "Paste from Printful". It is split into base material, colour exceptions, fabric weight and construction on save. Care is not supplied by Printful and is optional.', 'printful-meta-helper' ) )
+				. $p( __( 'Materials: paste the list from Printful\'s product description into "Paste from Printful", bullets optional. It is split into base material, colour exceptions, fabric weight, construction and disclaimers on save. Care is not supplied by Printful and is optional.', 'printful-meta-helper' ) )
 				. $p( __( 'Every import box is ignored when empty, so saving again never overwrites data. Everything imported stays editable in the grid and the fields.', 'printful-meta-helper' ) ),
 		);
 		$shortcodes = array(
 			'id'      => 'shortcodes',
 			'title'   => __( 'Shortcodes', 'printful-meta-helper' ),
 			'content' => '<p><code>[pmh_size_chart]</code> ' . esc_html__( 'renders the size chart for the current product, filtered to its sizes, with an inches/centimetres switch and the note. Attributes: product_id, unit="cm" (initial unit), toggle="0", note="0", table="body", class="extra classes".', 'printful-meta-helper' ) . '</p>'
-				. '<p><code>[pmh_materials]</code> ' . esc_html__( 'renders material with colour exceptions, fabric weight, construction and care, skipping empty fields. Attributes: product_id, fields="material,weight,construction,care", labels="0", class="".', 'printful-meta-helper' ) . '</p>'
+				. '<p><code>[pmh_materials]</code> ' . esc_html__( 'renders material with colour exceptions, fabric weight, construction, care and disclaimers, skipping empty fields. Attributes: product_id, fields="material,weight,construction,care,disclaimers", labels="0", class="".', 'printful-meta-helper' ) . '</p>'
 				. '<p><code>[pmh_blank_name]</code> ' . esc_html__( 'renders the blank\'s name as plain text for use inside a sentence.', 'printful-meta-helper' ) . '</p>'
+				. '<p><code>[pmh_companion_link]</code> ' . esc_html__( 'renders the blank\'s fit label and a link to the product\'s companion, for example "Unisex sizing. Looking for women\'s sizes?", using the companion blank\'s link text. Inline markup, so the text block it sits in controls the styling. Nothing renders when the product has no companion. Attributes: product_id, class="".', 'printful-meta-helper' ) . '</p>'
 				. $p( __( 'Place them in any text block on a product page or template. Each returns nothing, not a message, when there is nothing to show: no blank, a non-apparel blank, an empty chart, or no size in common between the chart and the product\'s variations. A text block containing only an empty shortcode collapses, so a mug page shows no chart and no gap.', 'printful-meta-helper' ) ),
 		);
 		$product = array(
@@ -207,7 +214,8 @@ final class PMH_Admin_Help {
 			'title'   => __( 'Blank', 'printful-meta-helper' ),
 			'content' => $p( __( 'The Blank box assigns one blank to this product. The list is filtered to blanks offered for the product\'s ticked categories and re-filters as you tick; "Show all blanks" lists every blank. A product holds exactly one blank; if more than one is submitted, for example by Bulk Edit, the most recently added wins.', 'printful-meta-helper' ) )
 				. $p( __( 'The panel under the select previews what will render from the saved variations: the material and weight, the sizes the chart will show, and a warning when nothing would render. On products Printful has pushed it also says whether the blank\'s chart matches the product\'s own Printful chart and names the blanks that do. A mismatch means either the wrong blank or that Printful has updated the garment\'s spec since the blank was entered.', 'printful-meta-helper' ) )
-				. $p( __( 'Place [pmh_size_chart] and [pmh_materials] in a text block on the product page or its template to render the blank\'s data. Blanks are managed under Products → Blanks.', 'printful-meta-helper' ) ),
+				. $p( __( 'Companion product links a unisex product to its women\'s-sizing twin, or the reverse. Saving links both ways; a companion already linked elsewhere has that link cleared, with a notice. [pmh_companion_link] then renders the fit label from this product\'s blank and the link text from the companion\'s blank, both set on the blank screen.', 'printful-meta-helper' ) )
+				. $p( __( 'Place [pmh_size_chart], [pmh_materials] and [pmh_companion_link] in a text block on the product page or its template to render the blank\'s data. Blanks are managed under Products → Blanks.', 'printful-meta-helper' ) ),
 		);
 		$groups_how = array(
 			'id'      => 'groups-how',

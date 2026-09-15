@@ -12,6 +12,7 @@ final class MaterialsRendererTest extends TestCase {
 				'fabric_weight'       => '5.0–5.3 oz/yd² (170-180 g/m²)',
 				'construction'        => "Tubular fabric\nTaped neck and shoulders",
 				'care'                => '',
+				'disclaimers'         => 'The fabric is slightly sheer.',
 			),
 			$overrides
 		);
@@ -26,6 +27,8 @@ final class MaterialsRendererTest extends TestCase {
 		self::assertStringContainsString( '<dd class="pmh-materials__value"><ul class="pmh-materials__lines"><li>Tubular fabric</li><li>Taped neck and shoulders</li></ul></dd>', $html );
 		// Empty care is skipped entirely.
 		self::assertStringNotContainsString( 'pmh-materials__item--care', $html );
+		self::assertStringContainsString( '<div class="pmh-materials__item pmh-materials__item--disclaimers"><dt class="pmh-materials__label">Disclaimers</dt><dd class="pmh-materials__value">The fabric is slightly sheer.</dd></div>', $html, 'disclaimers render by default, last' );
+		self::assertGreaterThan( strpos( $html, 'item--construction' ), strpos( $html, 'item--disclaimers' ) );
 	}
 
 	public function test_field_selection_and_no_labels(): void {
@@ -51,6 +54,7 @@ final class MaterialsRendererTest extends TestCase {
 				'material_exceptions' => '',
 				'fabric_weight'       => '',
 				'construction'        => '',
+				'disclaimers'         => '',
 			)
 		);
 		self::assertSame( '', PMH_Renderer::materials( pmh_test_blank(), $empty ) );

@@ -216,10 +216,12 @@ final class PMH_Importer {
 	 *
 	 * Rules: the first item containing "%" is the base material; further
 	 * "%" items are colour exceptions; a "Fabric weight" item is the
-	 * weight; sourcing lines and anything under a "Disclaimers" heading are
-	 * dropped; every other item is construction.
+	 * weight; sourcing lines are dropped; every other item is construction.
+	 * Disclaimers come in two shapes and both are kept: a "Disclaimers:"
+	 * heading followed by lines (Gildan), or an inline "Disclaimer: …"
+	 * sentence (Bella+Canvas).
 	 *
-	 * @return array{material_solid: string, material_exceptions: string, fabric_weight: string, construction: string, lines: int}
+	 * @return array{material_solid: string, material_exceptions: string, fabric_weight: string, construction: string, disclaimers: string, lines: int}
 	 */
 	public static function materials_from_text( string $text ): array {
 		$out = array(
@@ -227,15 +229,16 @@ final class PMH_Importer {
 			'material_exceptions' => '',
 			'fabric_weight'       => '',
 			'construction'        => '',
+			'disclaimers'         => '',
 			'lines'               => 0,
 		);
 
-		$items        = self::material_items( $text );
-		$out['lines'] = count( $items );
+		$parsed       = self::material_items( $text );
+		$out['lines'] = count( $parsed['items'] ) + count( $parsed['disclaimers'] );
 		$exceptions   = array();
 		$construction = array();
 
-		foreach ( $items as $item ) {
+		foreach ( $parsed['items'] as $item ) {
 			if ( preg_match( '/sourced from/i', $item ) ) {
 				continue;
 			}
@@ -256,15 +259,16 @@ final class PMH_Importer {
 
 		$out['material_exceptions'] = implode( "\n", $exceptions );
 		$out['construction']        = implode( "\n", $construction );
+		$out['disclaimers']         = implode( "\n", $parsed['disclaimers'] );
 
 		return $out;
 	}
 
 	/**
-	 * The list items in a materials paste, marker stripped, disclaimers
-	 * and prose removed.
+	 * The list items in a materials paste, marker stripped and prose
+	 * removed, with disclaimers separated out.
 	 *
-	 * @return string[]
+	 * @return array{items: string[], disclaimers: string[]}
 	 */
 	private static function material_items( string $text ): array {
 		$text = self::utf8( $text );
@@ -289,13 +293,23 @@ final class PMH_Importer {
 		}
 
 		$items       = array();
+		$disclaimers = array();
 		$in_disclaim = false;
 		foreach ( $lines as [ $line, $marked ] ) {
-			if ( preg_match( '/^disclaimers?\s*:?$/i', $line ) ) {
-				$in_disclaim = true;
+			if ( '' === $line ) {
 				continue;
 			}
-			if ( $in_disclaim || '' === $line ) {
+			// "Disclaimers:" heading, or "Disclaimer: sentence" inline. Either
+			// way everything from here on is a disclaimer.
+			if ( preg_match( '/^disclaimers?\s*:\s*(.*)$/iu', $line, $d ) ) {
+				$in_disclaim = true;
+				if ( '' !== trim( $d[1] ) ) {
+					$disclaimers[] = trim( $d[1] );
+				}
+				continue;
+			}
+			if ( $in_disclaim ) {
+				$disclaimers[] = $line;
 				continue;
 			}
 			if ( $bulleted ? ! $marked : self::looks_like_prose( $line ) ) {
@@ -303,7 +317,7 @@ final class PMH_Importer {
 			}
 			$items[] = $line;
 		}
-		return $items;
+		return compact( 'items', 'disclaimers' );
 	}
 
 	/**

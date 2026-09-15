@@ -23,6 +23,7 @@ final class BlankTest extends TestCase {
 				'kind'           => 'accessory',
 				'cats'           => array( 3, 4 ),
 				'material_solid' => '100% cotton',
+				'disclaimers'    => 'Sheer',
 				'chart'          => pmh_test_chart(),
 				'bogus'          => 'ignored',
 			)
@@ -31,6 +32,7 @@ final class BlankTest extends TestCase {
 		self::assertSame( 'accessory', $data['kind'] );
 		self::assertSame( array( 3, 4 ), $data['cats'] );
 		self::assertSame( '100% cotton', $data['material_solid'] );
+		self::assertSame( 'Sheer', $data['disclaimers'] );
 		self::assertSame( 8, count( $data['chart']['sizes'] ) );
 		self::assertArrayNotHasKey( 'bogus', PMH_Fake_WP::$term_meta[ $t->term_id ] );
 

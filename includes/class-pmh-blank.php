@@ -15,6 +15,9 @@ final class PMH_Blank {
 	public const META_WEIGHT       = '_pmh_fabric_weight';
 	public const META_CONSTRUCTION = '_pmh_construction';
 	public const META_CARE         = '_pmh_care';
+	public const META_DISCLAIMERS  = '_pmh_disclaimers';
+	public const META_FIT_LABEL    = '_pmh_fit_label';
+	public const META_LINK_TEXT    = '_pmh_link_text';
 	public const META_HANDLING_MIN = '_pmh_handling_min';
 	public const META_HANDLING_MAX = '_pmh_handling_max';
 	public const META_CHART        = '_pmh_size_chart';
@@ -33,6 +36,9 @@ final class PMH_Blank {
 		'fabric_weight'       => self::META_WEIGHT,
 		'construction'        => self::META_CONSTRUCTION,
 		'care'                => self::META_CARE,
+		'disclaimers'         => self::META_DISCLAIMERS,
+		'fit_label'           => self::META_FIT_LABEL,
+		'link_text'           => self::META_LINK_TEXT,
 		'handling_min'        => self::META_HANDLING_MIN,
 		'handling_max'        => self::META_HANDLING_MAX,
 		'chart'               => self::META_CHART,
@@ -48,6 +54,9 @@ final class PMH_Blank {
 			'fabric_weight'       => '',
 			'construction'        => '',
 			'care'                => '',
+			'disclaimers'         => '',
+			'fit_label'           => '',
+			'link_text'           => '',
 			'handling_min'        => '',
 			'handling_max'        => '',
 			'chart'               => PMH_Size_Chart::empty_chart(),

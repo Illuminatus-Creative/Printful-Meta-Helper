@@ -82,7 +82,7 @@ final class AdminHelpTest extends TestCase {
 			}
 		}
 		$shortcodes = PMH_Admin_Help::tabs( 'blank' )[2]['content'];
-		foreach ( array( '[pmh_size_chart]', '[pmh_materials]', '[pmh_blank_name]' ) as $sc ) {
+		foreach ( array( '[pmh_size_chart]', '[pmh_materials]', '[pmh_blank_name]', '[pmh_companion_link]' ) as $sc ) {
 			self::assertStringContainsString( $sc, $shortcodes );
 		}
 	}
@@ -131,7 +131,7 @@ final class AdminHelpTest extends TestCase {
 
 	public function test_shortcodes_box_lists_all_three(): void {
 		$html = PMH_Admin_Help::shortcodes_box();
-		foreach ( array( '[pmh_size_chart]', '[pmh_materials]', '[pmh_blank_name]' ) as $sc ) {
+		foreach ( array( '[pmh_size_chart]', '[pmh_materials]', '[pmh_blank_name]', '[pmh_companion_link]' ) as $sc ) {
 			self::assertStringContainsString( '<code>' . $sc . '</code>', $html );
 		}
 	}
@@ -149,7 +149,7 @@ final class AdminHelpTest extends TestCase {
 		$html = ob_get_clean();
 
 		$tips = substr_count( $html, 'class="pmh-tip' );
-		self::assertGreaterThanOrEqual( 14, $tips, 'one tip per explained field' );
+		self::assertGreaterThanOrEqual( 17, $tips, 'one tip per explained field' );
 		self::assertStringContainsString( '<code>[pmh_size_chart]</code>', $html );
 		// Every field row has a description except the shortcodes box.
 		$rows = substr_count( $html, '<tr class="form-field pmh-field' );
@@ -162,7 +162,8 @@ final class AdminHelpTest extends TestCase {
 		ob_start();
 		PMH_Product_Meta::render_metabox( (object) array( 'ID' => 1 ) );
 		$html = ob_get_clean();
-		self::assertSame( 3, substr_count( $html, 'class="pmh-tip' ) );
+		self::assertSame( 4, substr_count( $html, 'class="pmh-tip' ), 'select, show all, preview, companion' );
+		self::assertStringContainsString( 'wc-product-search', $html );
 		self::assertStringContainsString( 'edit-tags.php?taxonomy=pmh_blank&#038;post_type=product', $html );
 		self::assertStringContainsString( 'Manage blanks', $html );
 	}

@@ -9,7 +9,7 @@
  *     tbody tr.pmh-chart__row[data-size]
  *       th.pmh-chart__size
  *       td.pmh-chart__cell > span.pmh-chart__val.pmh-chart__val--in | --cm
- *   p.pmh-chart__note
+ *   p.pmh-chart__note.pmh-chart__note--supplier (fixed line), p.pmh-chart__note.pmh-chart__note--blank (the blank's note)
  *
  * Both unit values are always in the DOM; CSS shows one based on the
  * wrapper's unit class, so the toggle never rewrites text.
@@ -61,11 +61,12 @@ final class PMH_Renderer {
 		$opts = wp_parse_args(
 			$opts,
 			array(
-				'unit'   => 'in',
-				'toggle' => true,
-				'note'   => true,
-				'class'  => '',
-				'table'  => 'product',
+				'unit'     => 'in',
+				'toggle'   => true,
+				'note'     => true,
+				'supplier' => true,
+				'class'    => '',
+				'table'    => 'product',
 			)
 		);
 		$unit = 'cm' === $opts['unit'] ? 'cm' : 'in';
@@ -95,8 +96,21 @@ final class PMH_Renderer {
 		}
 		$html .= self::table_html( $chart, $suffix );
 
+		if ( $opts['supplier'] ) {
+			/**
+			 * The fixed line under every chart. These are print-on-demand
+			 * garments, so there is always a supplier, and the store does not
+			 * vouch for measurements copied from theirs.
+			 *
+			 * @param string $line Default "Measurements are provided by suppliers."
+			 */
+			$supplier = (string) apply_filters( 'pmh_chart_supplier_line', __( 'Measurements are provided by suppliers.', 'printful-meta-helper' ), $blank );
+			if ( '' !== $supplier ) {
+				$html .= '<p class="pmh-chart__note pmh-chart__note--supplier">' . esc_html( $supplier ) . '</p>';
+			}
+		}
 		if ( $opts['note'] && '' !== $chart['note'] ) {
-			$html .= '<p class="pmh-chart__note">' . esc_html( $chart['note'] ) . '</p>';
+			$html .= '<p class="pmh-chart__note pmh-chart__note--blank">' . esc_html( $chart['note'] ) . '</p>';
 		}
 
 		$html .= '</div>';
@@ -166,7 +180,7 @@ final class PMH_Renderer {
 	 *
 	 * .pmh-materials (+ --{blank-slug})
 	 *   dl.pmh-materials__list
-	 *     div.pmh-materials__item.pmh-materials__item--{field}
+	 *     div.pmh-materials__item.pmh-materials__item--{material|weight|construction|care|disclaimers}
 	 *       dt.pmh-materials__label
 	 *       dd.pmh-materials__value (+ ul.pmh-materials__lines for multi-line fields,
 	 *                                ul.pmh-materials__exceptions under material)
@@ -179,7 +193,7 @@ final class PMH_Renderer {
 		$opts = wp_parse_args(
 			$opts,
 			array(
-				'fields' => array( 'material', 'weight', 'construction', 'care' ),
+				'fields' => array( 'material', 'weight', 'construction', 'care', 'disclaimers' ),
 				'labels' => true,
 				'class'  => '',
 			)
@@ -197,6 +211,7 @@ final class PMH_Renderer {
 				'weight'       => __( 'Fabric weight', 'printful-meta-helper' ),
 				'construction' => __( 'Construction', 'printful-meta-helper' ),
 				'care'         => __( 'Care', 'printful-meta-helper' ),
+				'disclaimers'  => __( 'Disclaimers', 'printful-meta-helper' ),
 			),
 			$blank
 		);
@@ -217,6 +232,9 @@ final class PMH_Renderer {
 					break;
 				case 'care':
 					$value = self::lines_value( $data['care'] );
+					break;
+				case 'disclaimers':
+					$value = self::lines_value( (string) ( $data['disclaimers'] ?? '' ) );
 					break;
 				default:
 					continue 2;
