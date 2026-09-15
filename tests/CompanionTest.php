@@ -144,5 +144,6 @@ final class CompanionTest extends TestCase {
 		self::assertStringContainsString( 'data-exclude="1"', $field );
 		self::assertStringContainsString( '<option value="2" selected="selected">Product 2</option>', $field );
 		self::assertStringContainsString( 'name="pmh_companion_nonce"', $field );
+		self::assertStringContainsString( '<p class="description">The unisex or women', $field, 'always-visible description, not only a tooltip' );
 	}
 }

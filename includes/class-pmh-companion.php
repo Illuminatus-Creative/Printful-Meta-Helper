@@ -137,6 +137,7 @@ final class PMH_Companion {
 			$html .= sprintf( '<option value="%1$d" selected="selected">%2$s</option>', $companion, esc_html( get_the_title( $companion ) ?: '#' . $companion ) );
 		}
 		$html .= '</select>';
+		$html .= '<p class="description">' . esc_html__( 'The unisex or women\'s twin of this product. Saving links both products; clear it to unlink both. [pmh_companion_link] renders the sentence.', 'printful-meta-helper' ) . '</p>';
 		return $html;
 	}
 

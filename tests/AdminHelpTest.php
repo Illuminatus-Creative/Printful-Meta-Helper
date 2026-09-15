@@ -85,6 +85,10 @@ final class AdminHelpTest extends TestCase {
 		foreach ( array( '[pmh_size_chart]', '[pmh_materials]', '[pmh_blank_name]', '[pmh_companion_link]' ) as $sc ) {
 			self::assertStringContainsString( $sc, $shortcodes );
 		}
+		self::assertStringContainsString( 'supplier=&quot;0&quot;', $shortcodes, 'every size-chart attribute is documented' );
+		self::assertStringContainsString( 'disclaimers', $shortcodes );
+		self::assertStringContainsString( 'Fit label', PMH_Admin_Help::tabs( 'blank' )[0]['content'], 'companion wording explained where it is set' );
+		self::assertStringContainsString( 'Companion product', PMH_Admin_Help::tabs( 'product' )[0]['content'] );
 	}
 
 	public function test_context_detection_and_registration(): void {
