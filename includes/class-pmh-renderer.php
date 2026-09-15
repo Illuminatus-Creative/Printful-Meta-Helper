@@ -5,7 +5,7 @@
  * .pmh-chart (wrapper; also .pmh-chart--{blank-slug}, .pmh-chart--unit-in|cm)
  *   .pmh-chart__toggle > button.pmh-chart__unit[data-unit][aria-pressed]
  *   table.pmh-chart__table
- *     thead th.pmh-chart__head (+ --size on the first)
+ *     thead th.pmh-chart__head (+ --size on the first, --body on body-chart columns)
  *     tbody tr.pmh-chart__row[data-size]
  *       th.pmh-chart__size
  *       td.pmh-chart__cell > span.pmh-chart__val.pmh-chart__val--in | --cm
@@ -63,10 +63,11 @@ final class PMH_Renderer {
 			array(
 				'unit'     => 'in',
 				'toggle'   => true,
-				'note'     => true,
-				'supplier' => true,
-				'class'    => '',
-				'table'    => 'product',
+				'note'      => true,
+				'supplier'  => true,
+				'class'     => '',
+				'table'     => 'product',
+				'body_rows' => array(), // rows from the body chart appended as columns
 			)
 		);
 		$unit = 'cm' === $opts['unit'] ? 'cm' : 'in';
@@ -94,7 +95,7 @@ final class PMH_Renderer {
 		if ( $opts['toggle'] ) {
 			$html .= self::toggle_html( $unit );
 		}
-		$html .= self::table_html( $chart, $suffix );
+		$html .= self::table_html( $chart, $suffix, (array) $opts['body_rows'] );
 
 		$lines = array();
 		if ( $opts['supplier'] ) {
@@ -149,28 +150,39 @@ final class PMH_Renderer {
 
 	/**
 	 * One row per size, one column per measurement, both unit values in
-	 * every cell.
+	 * every cell. Body-chart rows, when given, follow the garment columns
+	 * and carry a --body modifier so they can be styled apart.
 	 *
-	 * @param array $suffix ['in' => '"', 'cm' => ''].
+	 * @param array $suffix    ['in' => '"', 'cm' => ''].
+	 * @param array $body_rows Rows from PMH_Size_Chart::pick_rows().
 	 */
-	private static function table_html( array $chart, array $suffix ): string {
+	private static function table_html( array $chart, array $suffix, array $body_rows = array() ): string {
+		$columns = array();
+		foreach ( $chart['rows'] as $row ) {
+			$columns[] = array( $row, '' );
+		}
+		foreach ( $body_rows as $row ) {
+			$columns[] = array( $row, ' pmh-chart__head--body' );
+		}
+
 		$html  = '<div class="pmh-chart__scroll"><table class="pmh-chart__table">';
 		$html .= '<thead><tr><th scope="col" class="pmh-chart__head pmh-chart__head--size">' . esc_html__( 'Size', 'printful-meta-helper' ) . '</th>';
-		foreach ( $chart['rows'] as $row ) {
-			$html .= '<th scope="col" class="pmh-chart__head">' . esc_html( $row['label'] ) . '</th>';
+		foreach ( $columns as [ $row, $modifier ] ) {
+			$html .= '<th scope="col" class="pmh-chart__head' . esc_attr( $modifier ) . '">' . esc_html( $row['label'] ) . '</th>';
 		}
 		$html .= '</tr></thead><tbody>';
 
 		foreach ( $chart['sizes'] as $size ) {
 			$html .= '<tr class="pmh-chart__row" data-size="' . esc_attr( $size ) . '">';
 			$html .= '<th scope="row" class="pmh-chart__size">' . esc_html( $size ) . '</th>';
-			foreach ( $chart['rows'] as $row ) {
-				$values = $row['values'][ $size ] ?? null;
+			foreach ( $columns as [ $row, $modifier ] ) {
+				$cell_mod = '' !== $modifier ? ' pmh-chart__cell--body' : '';
+				$values   = $row['values'][ $size ] ?? null;
 				if ( null === $values ) {
-					$html .= '<td class="pmh-chart__cell pmh-chart__cell--empty"></td>';
+					$html .= '<td class="pmh-chart__cell pmh-chart__cell--empty' . esc_attr( $cell_mod ) . '"></td>';
 					continue;
 				}
-				$html .= '<td class="pmh-chart__cell">';
+				$html .= '<td class="pmh-chart__cell' . esc_attr( $cell_mod ) . '">';
 				$html .= '<span class="pmh-chart__val pmh-chart__val--in">' . esc_html( PMH_Size_Chart::format_values( $values, 'in' ) . ( $suffix['in'] ?? '' ) ) . '</span>';
 				$html .= '<span class="pmh-chart__val pmh-chart__val--cm">' . esc_html( PMH_Size_Chart::format_values( $values, 'cm' ) . ( $suffix['cm'] ?? '' ) ) . '</span>';
 				$html .= '</td>';
@@ -212,6 +224,10 @@ final class PMH_Renderer {
 			$data['material_exceptions'] = implode(
 				"\n",
 				self::exceptions_for_colours( PMH_Util::lines( (string) ( $data['material_exceptions'] ?? '' ) ), $opts['colours'] )
+			);
+			$data['disclaimers'] = implode(
+				"\n",
+				self::disclaimers_for_colours( PMH_Util::lines( (string) ( $data['disclaimers'] ?? '' ) ), $opts['colours'] )
 			);
 		}
 
@@ -319,6 +335,57 @@ final class PMH_Renderer {
 				continue;
 			}
 			foreach ( $phrases as $phrase ) {
+				foreach ( $colours as $colour ) {
+					if ( preg_match( '/(?<![\p{L}\p{N}])' . preg_quote( $phrase, '/' ) . '(?![\p{L}\p{N}])/u', $colour ) ) {
+						$keep[] = $line;
+						continue 3;
+					}
+				}
+			}
+		}
+		return $keep;
+	}
+
+	/**
+	 * Keep the disclaimer lines that apply to the given colours.
+	 *
+	 * Disclaimers are prose, so the colour is found next to the word
+	 * "color": "the White color variant", "for the color Natural",
+	 * "Heather colors may …". A line naming no colour is general and stays;
+	 * a line naming colours stays only when one of them is a product colour.
+	 *
+	 * @param string[] $lines   Disclaimer lines.
+	 * @param string[] $colours Product colour names.
+	 * @return string[]
+	 */
+	public static function disclaimers_for_colours( array $lines, array $colours ): array {
+		$norm    = static fn( string $s ): string => strtolower( trim( preg_replace( array( '/\bgray\b/i', '/\s+/u' ), array( 'grey', ' ' ), $s ) ) );
+		$colours = array_values( array_filter( array_map( $norm, $colours ) ) );
+		$keep    = array();
+		foreach ( $lines as $line ) {
+			$named = array();
+			// "the White color", "White and Natural colors", "Heather colors": capitalised words before "color(s)".
+			if ( preg_match_all( '/((?:\p{Lu}[\p{L}\-]*(?:\s+(?:and\s+)?\p{Lu}[\p{L}\-]*)*))\s+colou?rs?\b/u', $line, $m ) ) {
+				foreach ( $m[1] as $found ) {
+					foreach ( preg_split( '/\s+and\s+|\s*,\s*/u', $found ) as $part ) {
+						$named[] = $norm( $part );
+					}
+				}
+			}
+			// "the color Natural", "colors White and Natural".
+			if ( preg_match_all( '/\bcolou?rs?\s+((?:\p{Lu}[\p{L}\-]*)(?:\s+(?:and\s+)?\p{Lu}[\p{L}\-]*)*)/u', $line, $m ) ) {
+				foreach ( $m[1] as $found ) {
+					foreach ( preg_split( '/\s+and\s+|\s*,\s*/u', $found ) as $part ) {
+						$named[] = $norm( $part );
+					}
+				}
+			}
+			$named = array_values( array_filter( array_unique( $named ) ) );
+			if ( ! $named ) {
+				$keep[] = $line;
+				continue;
+			}
+			foreach ( $named as $phrase ) {
 				foreach ( $colours as $colour ) {
 					if ( preg_match( '/(?<![\p{L}\p{N}])' . preg_quote( $phrase, '/' ) . '(?![\p{L}\p{N}])/u', $colour ) ) {
 						$keep[] = $line;

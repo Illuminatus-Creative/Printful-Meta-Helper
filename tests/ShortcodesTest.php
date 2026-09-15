@@ -61,6 +61,22 @@ final class ShortcodesTest extends TestCase {
 		self::assertSame( '', PMH_Shortcodes::size_chart( array( 'product_id' => '999' ) ), 'unknown product' );
 	}
 
+	public function test_chest_column_comes_from_the_body_chart_by_default(): void {
+		wp_set_object_terms( 1, array( $this->blank->term_id ), 'pmh_blank' );
+		self::assertStringNotContainsString( 'pmh-chart__head--body', PMH_Shortcodes::size_chart( array( 'product_id' => '1' ) ), 'no body chart yet: no column' );
+
+		PMH_Blank::update( $this->blank->term_id, array( 'body_chart' => PMH_Importer::from_json( pmh_fixture( 'gildan-5000.json' ) )['body'] ) );
+		$html = PMH_Shortcodes::size_chart( array( 'product_id' => '1' ) );
+		self::assertStringContainsString( '<th scope="col" class="pmh-chart__head pmh-chart__head--body">Chest</th>', $html );
+		self::assertSame( 3, substr_count( $html, 'pmh-chart__cell--body' ), 'one chest cell per rendered size (S, M, L)' );
+		self::assertStringContainsString( '42–45&quot;', $html, 'L chest range' );
+
+		self::assertStringNotContainsString( '--body', PMH_Shortcodes::size_chart( array( 'product_id' => '1', 'body_rows' => '' ) ), 'body_rows="" removes it' );
+		$two = PMH_Shortcodes::size_chart( array( 'product_id' => '1', 'body_rows' => 'Sleeve length, Chest' ) );
+		self::assertSame( 2, substr_count( $two, 'pmh-chart__head--body' ) );
+		self::assertStringNotContainsString( 'pmh-chart__head--body', PMH_Shortcodes::size_chart( array( 'product_id' => '1', 'table' => 'body' ) ), 'the body table itself gets no extra columns' );
+	}
+
 	public function test_size_chart_attributes(): void {
 		wp_set_object_terms( 1, array( $this->blank->term_id ), 'pmh_blank' );
 		$html = PMH_Shortcodes::size_chart( array( 'product_id' => '1', 'unit' => 'CM', 'toggle' => 'no', 'note' => '0', 'class' => 'x y' ) );

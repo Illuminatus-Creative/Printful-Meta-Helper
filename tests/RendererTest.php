@@ -73,6 +73,27 @@ final class RendererTest extends TestCase {
 		self::assertStringContainsString( '<td class="pmh-chart__cell pmh-chart__cell--empty"></td>', $html );
 	}
 
+	public function test_body_rows_append_columns_keyed_to_the_garment_sizes(): void {
+		$garment = PMH_Size_Chart::filter_sizes( pmh_test_chart(), array( 'S', 'M' ) );
+		$body    = PMH_Importer::from_json( pmh_fixture( 'gildan-5000.json' ) )['body'];
+		$rows    = PMH_Size_Chart::pick_rows( $garment, $body, array( 'chest', 'Nope', 'Length' ) );
+
+		self::assertSame( array( 'Chest', 'Length' ), array_column( $rows, 'label' ), 'case-insensitive, unknown label skipped, output order kept' );
+		self::assertSame( array( 'S' => array( 34.0, 37.0 ), 'M' => array( 38.0, 41.0 ) ), $rows[0]['values'], 'only the garment chart\'s sizes' );
+
+		$html = PMH_Renderer::size_chart( pmh_test_blank(), $garment, array( 'body_rows' => array( $rows[0] ) ) );
+		self::assertStringContainsString( '<th scope="col" class="pmh-chart__head">Sleeve length</th><th scope="col" class="pmh-chart__head pmh-chart__head--body">Chest</th></tr>', $html, 'body column after the garment columns' );
+		self::assertStringContainsString( '<td class="pmh-chart__cell pmh-chart__cell--body"><span class="pmh-chart__val pmh-chart__val--in">34–37&quot;</span><span class="pmh-chart__val pmh-chart__val--cm">86.4–94</span></td>', $html );
+		self::assertSame( 2, substr_count( $html, 'pmh-chart__cell--body' ) );
+	}
+
+	public function test_body_row_missing_a_size_renders_an_empty_body_cell(): void {
+		$garment = PMH_Size_Chart::normalise( array( 'sizes' => array( 'S', 'XS' ), 'rows' => array( array( 'label' => 'Length', 'values' => array( 'S' => 28, 'XS' => 27 ) ) ) ) );
+		$body    = PMH_Size_Chart::normalise( array( 'sizes' => array( 'S' ), 'rows' => array( array( 'label' => 'Chest', 'values' => array( 'S' => '34-37' ) ) ) ) );
+		$html    = PMH_Renderer::size_chart( pmh_test_blank(), $garment, array( 'body_rows' => PMH_Size_Chart::pick_rows( $garment, $body, array( 'Chest' ) ) ) );
+		self::assertStringContainsString( '<td class="pmh-chart__cell pmh-chart__cell--empty pmh-chart__cell--body"></td>', $html );
+	}
+
 	public function test_empty_chart_is_empty_string(): void {
 		self::assertSame( '', PMH_Renderer::size_chart( pmh_test_blank(), PMH_Size_Chart::empty_chart() ) );
 	}

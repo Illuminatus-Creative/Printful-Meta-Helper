@@ -36,8 +36,9 @@ blanks in bulk (phase 9).
 ## Install
 
 Copy or clone this folder into `wp-content/plugins/` and activate. There is
-no update mechanism by design (`Update URI: false`). Bump `Version` in the
-plugin header by hand.
+no update mechanism by design (`Update URI: false`). Every shipped change
+bumps `Version` in the plugin header and `PMH_VERSION` together; see
+`CHANGELOG.md`. A test fails if they disagree.
 
 ## Help in the admin
 
@@ -115,7 +116,7 @@ AJAX, so open the blank afterwards to see what was imported.
 
 ```
 [pmh_size_chart]
-[pmh_size_chart product_id="123" unit="cm" toggle="0" note="0" table="body" class="extra classes"]
+[pmh_size_chart product_id="123" unit="cm" toggle="0" note="0" body_rows="Chest,Waist" table="body" class="extra classes"]
 [pmh_materials]
 [pmh_materials fields="material,weight" labels="0" class="extra classes"]
 [pmh_blank_name]
@@ -129,7 +130,10 @@ its colour variations the same way sizes are: a tee sold in Black and Navy
 shows no heather line, a product with no colour attribute shows every line,
 and `filter_colours="0"` turns the filter off. A line's colours are the
 words before "is"/"are", so write them as Printful does ("Sport Grey",
-"Heather colors", "Athletic and Black Heather"). `[pmh_blank_name]`
+"Heather colors", "Athletic and Black Heather"). Disclaimers are filtered
+the same way: a line naming a colour next to the word "color" ("the White
+color variant", "the color Natural") renders only when the product is sold
+in that colour; a line naming no colour always renders. `[pmh_blank_name]`
 is the blank's name as plain text for use inside a sentence. All three
 return an empty string when the product has no blank.
 
@@ -159,7 +163,10 @@ blank's garment chart (`table="body"` for body measurements) with one row per
 size, an inches/centimetres toggle, the fixed line "Measurements are provided
 by suppliers." (`supplier="0"` hides it; the `pmh_chart_supplier_line` filter
 changes it), and the blank's note. Values display to one decimal, as
-Printful shows them; storage keeps two. Returns an empty string,
+Printful shows them; storage keeps two. `body_rows` appends rows from the
+body chart as extra columns after the garment columns, so the chest range
+that fits sits next to the garment width; default `"Chest"`, `""` for
+none, `"Chest,Waist"` for several. Body columns carry `--body` modifiers. Returns an empty string,
 never a message, when the product has no blank, the blank is not apparel,
 the chart is empty, or no chart size matches the product's variations.
 

@@ -293,6 +293,44 @@ final class PMH_Size_Chart {
 	}
 
 	/**
+	 * Rows from a second chart (the body chart) picked by label, keyed to
+	 * the first chart's sizes, for rendering as extra columns. Labels match
+	 * case-insensitively; a label with no row is skipped; a size the body
+	 * chart lacks becomes an empty cell.
+	 *
+	 * @param array    $chart  Normalised garment chart (its sizes rule).
+	 * @param array    $body   Body chart.
+	 * @param string[] $labels Row labels wanted, in output order.
+	 * @return array<int, array{label: string, values: array}>
+	 */
+	public static function pick_rows( array $chart, array $body, array $labels ): array {
+		$body   = self::normalise( $body );
+		$wanted = array_map( static fn( $l ) => strtolower( trim( (string) $l ) ), $labels );
+		$out    = array();
+		foreach ( $wanted as $want ) {
+			foreach ( $body['rows'] as $row ) {
+				if ( strtolower( $row['label'] ) !== $want ) {
+					continue;
+				}
+				$values = array();
+				foreach ( $chart['sizes'] as $size ) {
+					if ( isset( $row['values'][ $size ] ) ) {
+						$values[ $size ] = $row['values'][ $size ];
+					}
+				}
+				if ( $values ) {
+					$out[] = array(
+						'label'  => $row['label'],
+						'values' => $values,
+					);
+				}
+				break;
+			}
+		}
+		return $out;
+	}
+
+	/**
 	 * Stable fingerprint of a chart's sizes and rows (note ignored), for
 	 * comparing a blank against a product's own Printful chart.
 	 */

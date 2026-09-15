@@ -82,7 +82,11 @@ final class PMH_Shortcodes {
 	}
 
 	/**
-	 * [pmh_size_chart product_id="" unit="in" toggle="1" note="1" supplier="1" table="product" class=""]
+	 * [pmh_size_chart product_id="" unit="in" toggle="1" note="1" supplier="1" table="product" body_rows="Chest" class=""]
+	 *
+	 * body_rows appends rows from the body chart as extra columns of the
+	 * garment table, so a buyer sees the chest range that fits next to the
+	 * garment width. Default "Chest"; "" for none; "Chest,Waist" for more.
 	 */
 	public static function size_chart( $atts ): string {
 		$atts = shortcode_atts(
@@ -93,6 +97,7 @@ final class PMH_Shortcodes {
 				'note'       => '1',
 				'supplier'   => '1',
 				'table'      => 'product',
+				'body_rows'  => 'Chest',
 				'class'      => '',
 			),
 			$atts,
@@ -117,9 +122,16 @@ final class PMH_Shortcodes {
 		$table = 'body' === $atts['table'] ? 'body' : 'product';
 		$chart = 'body' === $table ? $data['body_chart'] : $data['chart'];
 
-		$applied = PMH_Sizes::apply( $chart, PMH_Sizes::for_product( $product_id ) );
+		$sizes   = PMH_Sizes::for_product( $product_id );
+		$applied = PMH_Sizes::apply( $chart, $sizes );
 		if ( null === $applied['chart'] ) {
 			return '';
+		}
+
+		$body_rows = array();
+		$wanted    = preg_split( '/\s*,\s*/', (string) $atts['body_rows'], -1, PREG_SPLIT_NO_EMPTY );
+		if ( 'product' === $table && $wanted && ! PMH_Size_Chart::is_empty( $data['body_chart'] ) ) {
+			$body_rows = PMH_Size_Chart::pick_rows( $applied['chart'], $data['body_chart'], $wanted );
 		}
 
 		PMH_Renderer::enqueue_assets();
@@ -131,8 +143,9 @@ final class PMH_Shortcodes {
 				'unit'   => 'cm' === strtolower( (string) $atts['unit'] ) ? 'cm' : 'in',
 				'toggle'   => PMH_Util::truthy( $atts['toggle'] ),
 				'note'     => PMH_Util::truthy( $atts['note'] ),
-				'supplier' => PMH_Util::truthy( $atts['supplier'] ),
-				'table'    => $table,
+				'supplier'  => PMH_Util::truthy( $atts['supplier'] ),
+				'table'     => $table,
+				'body_rows' => $body_rows,
 				'class'  => (string) $atts['class'],
 			)
 		);

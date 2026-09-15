@@ -45,6 +45,30 @@ final class MaterialsColourTest extends TestCase {
 		self::assertSame( array( self::BELLA[0] ), PMH_Renderer::exceptions_for_colours( self::BELLA, array( 'Ash' ) ), '"Ash color" strips the filler word' );
 	}
 
+	private const DISCLAIMERS = array(
+		'Due to the fabric properties, the White color variant may appear off-white rather than bright white.',
+		'Dark color speckles throughout the fabric are expected for the color Natural.',
+		'The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions.',
+	);
+
+	public function test_disclaimers_naming_a_colour_follow_the_product_colours(): void {
+		self::assertSame( array( self::DISCLAIMERS[2] ), PMH_Renderer::disclaimers_for_colours( self::DISCLAIMERS, array( 'Black', 'Navy' ) ), 'general line stays, colour-specific lines go' );
+		self::assertSame( array( self::DISCLAIMERS[0], self::DISCLAIMERS[2] ), PMH_Renderer::disclaimers_for_colours( self::DISCLAIMERS, array( 'White' ) ), '"the White color variant"' );
+		self::assertSame( array( self::DISCLAIMERS[1], self::DISCLAIMERS[2] ), PMH_Renderer::disclaimers_for_colours( self::DISCLAIMERS, array( 'Natural' ) ), '"the color Natural"' );
+		self::assertSame( self::DISCLAIMERS, PMH_Renderer::disclaimers_for_colours( self::DISCLAIMERS, array( 'White', 'Natural' ) ) );
+		self::assertSame( array( 'Heather colors may show slight marbling.' ), PMH_Renderer::disclaimers_for_colours( array( 'Heather colors may show slight marbling.' ), array( 'Dark Heather' ) ) );
+		self::assertSame( array(), PMH_Renderer::disclaimers_for_colours( array( 'Heather colors may show slight marbling.' ), array( 'Black' ) ) );
+	}
+
+	public function test_materials_renderer_filters_disclaimers_with_colours(): void {
+		$data = array( 'material_solid' => '100% cotton', 'disclaimers' => implode( "\n", self::DISCLAIMERS ) );
+		self::assertSame( 3, substr_count( PMH_Renderer::materials( pmh_test_blank(), $data ), '<li>' ) );
+		$html = PMH_Renderer::materials( pmh_test_blank(), $data, array( 'colours' => array( 'Black' ) ) );
+		self::assertStringContainsString( 'slightly sheer', $html );
+		self::assertStringNotContainsString( 'off-white', $html );
+		self::assertStringNotContainsString( 'Natural', $html );
+	}
+
 	public function test_lines_without_a_subject_are_kept(): void {
 		$lines = array( 'Fabric may pill after heavy washing', 'Heather colors are 50/50' );
 		self::assertSame( array( $lines[0] ), PMH_Renderer::exceptions_for_colours( $lines, array( 'Black' ) ) );
