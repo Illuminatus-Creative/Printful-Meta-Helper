@@ -175,7 +175,7 @@ never edit the plugin stylesheet.
     th.pmh-chart__head (--size on the first)
     tr.pmh-chart__row[data-size] > th.pmh-chart__size, td.pmh-chart__cell
       span.pmh-chart__val--in / span.pmh-chart__val--cm (one shown by CSS)
-  p.pmh-chart__note--supplier, p.pmh-chart__note--blank
+  p.pmh-chart__note > span.pmh-chart__note-line--supplier <br> span.pmh-chart__note-line--blank
 ```
 
 ```

@@ -22,7 +22,8 @@ final class RendererTest extends TestCase {
 		self::assertStringContainsString( '<span class="pmh-chart__val pmh-chart__val--in">15.6&quot;</span><span class="pmh-chart__val pmh-chart__val--cm">39.7</span>', $html );
 		self::assertStringNotContainsString( 'data-size="L"', $html );
 
-		self::assertStringContainsString( '<p class="pmh-chart__note pmh-chart__note--supplier">Measurements are provided by suppliers.</p><p class="pmh-chart__note pmh-chart__note--blank">Product measurements may vary by up to 2&quot; (5 cm).</p>', $html, 'supplier line first, then the blank\'s note' );
+		self::assertStringContainsString( '<p class="pmh-chart__note"><span class="pmh-chart__note-line pmh-chart__note-line--supplier">Measurements are provided by suppliers.</span><br><span class="pmh-chart__note-line pmh-chart__note-line--blank">Product measurements may vary by up to 2&quot; (5 cm).</span></p>', $html, 'one paragraph: supplier line, break, the blank\'s note' );
+		self::assertSame( 1, substr_count( $html, '<p class="pmh-chart__note"' ) );
 		self::assertStringEndsWith( '</div>', $html );
 	}
 
@@ -51,10 +52,11 @@ final class RendererTest extends TestCase {
 		$chart         = pmh_test_chart();
 		$chart['note'] = '';
 		$html          = PMH_Renderer::size_chart( pmh_test_blank(), $chart );
-		self::assertStringContainsString( 'pmh-chart__note--supplier', $html );
-		self::assertStringNotContainsString( 'pmh-chart__note--blank', $html );
+		self::assertStringContainsString( 'pmh-chart__note-line--supplier', $html );
+		self::assertStringNotContainsString( 'pmh-chart__note-line--blank', $html );
+		self::assertStringNotContainsString( '<br>', $html, 'no break with a single line' );
 		$off = PMH_Renderer::size_chart( pmh_test_blank(), $chart, array( 'supplier' => false ) );
-		self::assertStringNotContainsString( 'pmh-chart__note', $off );
+		self::assertStringNotContainsString( 'pmh-chart__note', $off, 'no note paragraph at all when both are off or empty' );
 	}
 
 	public function test_ranges_and_missing_cells(): void {

@@ -9,7 +9,7 @@
  *     tbody tr.pmh-chart__row[data-size]
  *       th.pmh-chart__size
  *       td.pmh-chart__cell > span.pmh-chart__val.pmh-chart__val--in | --cm
- *   p.pmh-chart__note.pmh-chart__note--supplier (fixed line), p.pmh-chart__note.pmh-chart__note--blank (the blank's note)
+ *   p.pmh-chart__note > span.pmh-chart__note-line--supplier <br> span.pmh-chart__note-line--blank
  *
  * Both unit values are always in the DOM; CSS shows one based on the
  * wrapper's unit class, so the toggle never rewrites text.
@@ -96,6 +96,7 @@ final class PMH_Renderer {
 		}
 		$html .= self::table_html( $chart, $suffix );
 
+		$lines = array();
 		if ( $opts['supplier'] ) {
 			/**
 			 * The fixed line under every chart. These are print-on-demand
@@ -106,11 +107,16 @@ final class PMH_Renderer {
 			 */
 			$supplier = (string) apply_filters( 'pmh_chart_supplier_line', __( 'Measurements are provided by suppliers.', 'printful-meta-helper' ), $blank );
 			if ( '' !== $supplier ) {
-				$html .= '<p class="pmh-chart__note pmh-chart__note--supplier">' . esc_html( $supplier ) . '</p>';
+				$lines[] = '<span class="pmh-chart__note-line pmh-chart__note-line--supplier">' . esc_html( $supplier ) . '</span>';
 			}
 		}
 		if ( $opts['note'] && '' !== $chart['note'] ) {
-			$html .= '<p class="pmh-chart__note pmh-chart__note--blank">' . esc_html( $chart['note'] ) . '</p>';
+			$lines[] = '<span class="pmh-chart__note-line pmh-chart__note-line--blank">' . esc_html( $chart['note'] ) . '</span>';
+		}
+		if ( $lines ) {
+			// One paragraph, lines separated by a break, so the notes sit
+			// together under the table rather than as spaced paragraphs.
+			$html .= '<p class="pmh-chart__note">' . implode( '<br>', $lines ) . '</p>';
 		}
 
 		$html .= '</div>';

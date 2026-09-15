@@ -67,8 +67,8 @@ final class ShortcodesTest extends TestCase {
 		self::assertStringContainsString( 'pmh-chart--unit-cm', $html );
 		self::assertStringContainsString( 'pmh-chart--locked', $html );
 		self::assertStringContainsString( ' x y"', $html );
-		self::assertStringContainsString( 'pmh-chart__note--supplier', $html, 'note="0" leaves the fixed supplier line' );
-		self::assertStringNotContainsString( 'pmh-chart__note--blank', $html );
+		self::assertStringContainsString( 'pmh-chart__note-line--supplier', $html, 'note="0" leaves the fixed supplier line' );
+		self::assertStringNotContainsString( 'pmh-chart__note-line--blank', $html );
 		$none = PMH_Shortcodes::size_chart( array( 'product_id' => '1', 'note' => '0', 'supplier' => 'no' ) );
 		self::assertStringNotContainsString( 'pmh-chart__note', $none );
 
