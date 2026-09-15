@@ -1,0 +1,228 @@
+/* Blank term screens. The taxonomy is hierarchical only so quick/bulk edit
+   render a checklist; a parent blank has no meaning, so hide the field. */
+.taxonomy-pmh_blank .form-field.term-parent-wrap,
+.taxonomy-pmh_blank .form-field.term-parent-wrap + p.description,
+.taxonomy-pmh_blank tr.form-field.term-parent-wrap {
+	display: none;
+}
+
+/* Blank edit form */
+.taxonomy-pmh_blank .pmh-heading {
+	margin: 1.5em 0 0.25em;
+	padding-bottom: 0.25em;
+	border-bottom: 1px solid #dcdcde;
+	font-size: 1.1em;
+}
+.taxonomy-pmh_blank .pmh-heading-row th {
+	padding-bottom: 0;
+}
+.taxonomy-pmh_blank .pmh-checklist {
+	max-height: 14em;
+	overflow-y: auto;
+	margin: 0;
+	padding: 6px 10px;
+	border: 1px solid #dcdcde;
+	background: #fff;
+}
+.taxonomy-pmh_blank .pmh-checklist li {
+	margin: 2px 0;
+}
+.taxonomy-pmh_blank textarea.code {
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	white-space: pre;
+}
+
+/* Product edit: blank selector */
+.pmh-assign__showall {
+	margin: 8px 0 4px;
+}
+.pmh-assign__preview {
+	margin-top: 6px;
+	padding-top: 6px;
+	border-top: 1px solid #dcdcde;
+	font-size: 12px;
+}
+.pmh-assign__preview p {
+	margin: 4px 0;
+}
+.pmh-assign__name {
+	font-weight: 600;
+	font-size: 13px;
+}
+.pmh-assign__facts {
+	margin: 4px 0;
+}
+.pmh-assign__facts dt {
+	display: inline;
+	font-weight: 600;
+}
+.pmh-assign__facts dt::after {
+	content: ": ";
+}
+.pmh-assign__facts dd {
+	display: inline;
+	margin: 0;
+}
+.pmh-assign__facts dd::after {
+	content: "";
+	display: block;
+}
+.pmh-assign__ok {
+	color: #00751a;
+}
+.pmh-assign__warn {
+	color: #b32d2e;
+}
+.pmh-assign__hint {
+	color: #646970;
+}
+
+/* Size chart grid editor */
+.pmh-grid {
+	margin: 4px 0 8px;
+}
+.pmh-grid__note {
+	margin: 0 0 8px;
+}
+.pmh-grid__scroll {
+	overflow-x: auto;
+	max-width: 100%;
+}
+.pmh-grid__table {
+	border-collapse: collapse;
+	background: #fff;
+	border: 1px solid #dcdcde;
+}
+.pmh-grid__table th,
+.pmh-grid__table td {
+	padding: 4px;
+	border: 1px solid #dcdcde;
+	text-align: center;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+.pmh-grid__corner {
+	text-align: left;
+}
+.pmh-grid__size {
+	background: #f6f7f7;
+}
+.pmh-grid__size-input {
+	width: 4.5em;
+	text-align: center;
+	font-weight: 600;
+}
+.pmh-grid__label {
+	width: 11em;
+}
+.pmh-grid__value {
+	width: 5.5em;
+	text-align: center;
+}
+.pmh-grid__value--bad {
+	border-color: #b32d2e;
+	box-shadow: 0 0 0 1px #b32d2e;
+}
+.pmh-grid__remove {
+	min-height: 24px;
+	line-height: 22px;
+	padding: 0 6px;
+}
+.pmh-grid__remove-cell,
+.pmh-grid__add {
+	background: #f6f7f7;
+}
+.pmh-grid__table tfoot td {
+	text-align: left;
+}
+.pmh-grid__error {
+	color: #b32d2e;
+}
+.pmh-grid__json-toggle {
+	margin-bottom: 6px;
+}
+
+/* Blank Groups screen */
+.pmh-groups__summary {
+	font-size: 14px;
+}
+.pmh-groups__table th.pmh-groups__apply,
+.pmh-groups__table td.pmh-groups__apply {
+	width: 3em;
+	text-align: center;
+}
+.pmh-groups__chart {
+	width: 28%;
+}
+.pmh-groups__products details ul {
+	margin: 6px 0 0 1em;
+	list-style: disc;
+	max-height: 14em;
+	overflow-y: auto;
+}
+.pmh-groups__assign label {
+	display: inline-block;
+	min-width: 9em;
+	margin: 2px 0;
+}
+.pmh-groups__assign select {
+	max-width: 16em;
+}
+
+/* Help: intro, fallback tip, shortcodes reference */
+.pmh-intro {
+	max-width: 60em;
+	margin: 0 0 12px;
+	padding: 10px 14px;
+	background: #fff;
+	border-left: 4px solid #2271b1;
+}
+.pmh-intro p {
+	margin: 6px 0;
+}
+.pmh-tip {
+	color: #787c82;
+	cursor: help;
+	vertical-align: middle;
+}
+.pmh-tip:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+.taxonomy-pmh_blank .form-field label + .woocommerce-help-tip,
+.taxonomy-pmh_blank .form-field label + .pmh-tip {
+	margin-left: 4px;
+}
+.pmh-shortcodes {
+	border-collapse: collapse;
+}
+.pmh-shortcodes th,
+.pmh-shortcodes td {
+	padding: 4px 10px 4px 0;
+	vertical-align: top;
+	text-align: left;
+	font-weight: normal;
+}
+.pmh-shortcodes code {
+	white-space: nowrap;
+}
+.pmh-assign__label,
+.pmh-assign__previewlabel {
+	margin: 0 0 4px;
+	font-weight: 600;
+}
+.pmh-assign__previewlabel {
+	margin-top: 8px;
+}
+.pmh-assign__manage {
+	margin: 6px 0 0;
+	font-size: 12px;
+}
+
+.pmh-assign__problems {
+	margin: 2px 0 6px 1.2em;
+	list-style: disc;
+	font-size: 12px;
+	color: #b32d2e;
+}
